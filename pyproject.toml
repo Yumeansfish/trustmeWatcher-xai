@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trustme-xai"
+version = "0.1.0"
+description = "Runtime feature pipeline and inference engine for TrustmeWatcher"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "joblib==1.5.2",
+    "numpy==2.4.4",
+    "pandas==3.0.2",
+    "scikit-learn==1.8.0",
+    "shap==0.48.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.3",
+    "ruff==0.8.6",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+trustme_xai = [
+    "current.joblib",
+    "feature_pipeline/*.json",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

@@ -1,0 +1,1085 @@
+{
+  "categories": [
+    "ai_assistant",
+    "browser_uncategorized",
+    "calendar_tasks",
+    "communication",
+    "development",
+    "file_management",
+    "game_distraction",
+    "media",
+    "meetings",
+    "other",
+    "personal_distraction",
+    "research",
+    "system_admin",
+    "writing"
+  ],
+  "app_exact_rules": {
+    "1password": [
+      "system_admin",
+      "app:password-manager"
+    ],
+    "1password 7": [
+      "system_admin",
+      "app:password-manager"
+    ],
+    "acrobat": [
+      "writing",
+      "app:acrobat"
+    ],
+    "acrobat.exe": [
+      "writing",
+      "app:acrobat"
+    ],
+    "activity monitor": [
+      "system_admin",
+      "app:activity-monitor"
+    ],
+    "android studio": [
+      "development",
+      "app:android-studio"
+    ],
+    "anyconnect": [
+      "system_admin",
+      "app:vpn"
+    ],
+    "app store": [
+      "system_admin",
+      "app:app-store"
+    ],
+    "archive utility": [
+      "file_management",
+      "app:archive-utility"
+    ],
+    "arduino ide": [
+      "development",
+      "app:arduino"
+    ],
+    "automator": [
+      "system_admin",
+      "app:automator"
+    ],
+    "avgui.exe": [
+      "system_admin",
+      "app:avg"
+    ],
+    "azure data studio": [
+      "development",
+      "app:azure-data-studio"
+    ],
+    "balatro": [
+      "game_distraction",
+      "app:balatro"
+    ],
+    "busycal": [
+      "calendar_tasks",
+      "app:busycal"
+    ],
+    "calculator": [
+      "system_admin",
+      "app:calculator"
+    ],
+    "calendar": [
+      "calendar_tasks",
+      "app:calendar"
+    ],
+    "chatgpt": [
+      "ai_assistant",
+      "app:chatgpt"
+    ],
+    "cisco secure client": [
+      "system_admin",
+      "app:vpn"
+    ],
+    "cmd.exe": [
+      "development",
+      "app:cmd"
+    ],
+    "code": [
+      "development",
+      "app:vscode"
+    ],
+    "code.exe": [
+      "development",
+      "app:vscode"
+    ],
+    "dictionary": [
+      "research",
+      "app:dictionary"
+    ],
+    "discord": [
+      "social_distraction",
+      "app:discord"
+    ],
+    "docker desktop": [
+      "development",
+      "app:docker"
+    ],
+    "draw.io": [
+      "design_creative",
+      "app:drawio"
+    ],
+    "element.exe": [
+      "communication",
+      "app:element"
+    ],
+    "epic games launcher": [
+      "game_distraction",
+      "app:epic-games"
+    ],
+    "facetime": [
+      "communication",
+      "app:facetime"
+    ],
+    "finder": [
+      "file_management",
+      "app:finder"
+    ],
+    "fork": [
+      "development",
+      "app:fork"
+    ],
+    "forklift": [
+      "file_management",
+      "app:forklift"
+    ],
+    "geometry dash": [
+      "game_distraction",
+      "app:geometry-dash"
+    ],
+    "globalprotect": [
+      "system_admin",
+      "app:vpn"
+    ],
+    "intellij idea": [
+      "development",
+      "app:intellij"
+    ],
+    "iterm2": [
+      "development",
+      "app:iterm"
+    ],
+    "kingdom": [
+      "game_distraction",
+      "app:kingdom"
+    ],
+    "logi options+": [
+      "system_admin",
+      "app:logitech-options"
+    ],
+    "mail": [
+      "communication",
+      "app:mail"
+    ],
+    "messages": [
+      "communication",
+      "app:messages"
+    ],
+    "microsoft excel": [
+      "writing",
+      "app:excel"
+    ],
+    "microsoft onenote": [
+      "writing",
+      "app:onenote"
+    ],
+    "microsoft outlook": [
+      "communication",
+      "app:outlook"
+    ],
+    "microsoft powerpoint": [
+      "writing",
+      "app:powerpoint"
+    ],
+    "microsoft remote desktop": [
+      "system_admin",
+      "app:remote-desktop"
+    ],
+    "microsoft teams": [
+      "meetings",
+      "app:teams"
+    ],
+    "microsoft teams (work or school)": [
+      "meetings",
+      "app:teams"
+    ],
+    "microsoft word": [
+      "writing",
+      "app:word"
+    ],
+    "minecraft launcher": [
+      "game_distraction",
+      "app:minecraft"
+    ],
+    "mintty.exe": [
+      "development",
+      "app:mintty"
+    ],
+    "mongodb compass": [
+      "data_analysis",
+      "app:mongodb-compass"
+    ],
+    "mtga": [
+      "game_distraction",
+      "app:mtga"
+    ],
+    "music": [
+      "media",
+      "app:music"
+    ],
+    "mysqlworkbench": [
+      "development",
+      "app:mysql-workbench"
+    ],
+    "news tower": [
+      "media",
+      "app:news"
+    ],
+    "nordpass": [
+      "system_admin",
+      "app:password-manager"
+    ],
+    "nordvpn": [
+      "system_admin",
+      "app:vpn"
+    ],
+    "notepad++.exe": [
+      "development",
+      "app:notepad++"
+    ],
+    "notepad.exe": [
+      "writing",
+      "app:notepad"
+    ],
+    "notes": [
+      "writing",
+      "app:notes"
+    ],
+    "notion": [
+      "writing",
+      "app:notion"
+    ],
+    "notion calendar": [
+      "calendar_tasks",
+      "app:notion-calendar"
+    ],
+    "numbers": [
+      "writing",
+      "app:numbers"
+    ],
+    "numi": [
+      "system_admin",
+      "app:calculator"
+    ],
+    "obsidian": [
+      "writing",
+      "app:obsidian"
+    ],
+    "ocosense": [
+      "data_analysis",
+      "app:ocosense"
+    ],
+    "onedrive": [
+      "file_management",
+      "app:onedrive"
+    ],
+    "onedrive.exe": [
+      "file_management",
+      "app:onedrive"
+    ],
+    "outlook.exe": [
+      "communication",
+      "app:outlook"
+    ],
+    "pages": [
+      "writing",
+      "app:pages"
+    ],
+    "photos": [
+      "media",
+      "app:photos"
+    ],
+    "postman": [
+      "development",
+      "app:postman"
+    ],
+    "preview": [
+      "writing",
+      "app:preview"
+    ],
+    "print center": [
+      "system_admin",
+      "app:print-center"
+    ],
+    "print centre": [
+      "system_admin",
+      "app:print-center"
+    ],
+    "python": [
+      "development",
+      "app:python"
+    ],
+    "quicktime player": [
+      "media",
+      "app:quicktime"
+    ],
+    "rakuten viber": [
+      "communication",
+      "app:viber"
+    ],
+    "reminders": [
+      "calendar_tasks",
+      "app:reminders"
+    ],
+    "sky go": [
+      "media",
+      "app:sky-go"
+    ],
+    "skype.exe": [
+      "communication",
+      "app:skype"
+    ],
+    "slack": [
+      "communication",
+      "app:slack"
+    ],
+    "spotify": [
+      "media",
+      "app:spotify"
+    ],
+    "stats": [
+      "system_admin",
+      "app:stats"
+    ],
+    "steam": [
+      "game_distraction",
+      "app:steam"
+    ],
+    "steam helper": [
+      "game_distraction",
+      "app:steam"
+    ],
+    "stream deck": [
+      "system_admin",
+      "app:stream-deck"
+    ],
+    "system information": [
+      "system_admin",
+      "app:system-information"
+    ],
+    "system settings": [
+      "system_admin",
+      "app:system-settings"
+    ],
+    "teamviewer": [
+      "system_admin",
+      "app:teamviewer"
+    ],
+    "telegram": [
+      "communication",
+      "app:telegram"
+    ],
+    "tencentmeeting": [
+      "meetings",
+      "app:tencent-meeting"
+    ],
+    "terminal": [
+      "development",
+      "app:terminal"
+    ],
+    "texshop": [
+      "writing",
+      "app:texshop"
+    ],
+    "textedit": [
+      "writing",
+      "app:textedit"
+    ],
+    "tlauncher": [
+      "game_distraction",
+      "app:tlauncher"
+    ],
+    "trae": [
+      "development",
+      "app:trae"
+    ],
+    "unity": [
+      "development",
+      "app:unity"
+    ],
+    "unity hub": [
+      "development",
+      "app:unity-hub"
+    ],
+    "unzip - rar zip 7z unarchiver": [
+      "file_management",
+      "app:archive-utility"
+    ],
+    "viber": [
+      "communication",
+      "app:viber"
+    ],
+    "virtualboxvm.exe": [
+      "development",
+      "app:virtualbox"
+    ],
+    "warp": [
+      "development",
+      "app:warp"
+    ],
+    "whatsapp": [
+      "communication",
+      "app:whatsapp"
+    ],
+    "windowsterminal.exe": [
+      "development",
+      "app:terminal"
+    ],
+    "winword.exe": [
+      "writing",
+      "app:word"
+    ],
+    "zoom.us": [
+      "meetings",
+      "app:zoom"
+    ],
+    "zotero": [
+      "research",
+      "app:zotero"
+    ],
+    "pickerhost.exe": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "applicationframehost.exe": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "cloudnotifications.exe": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "shellexperiencehost.exe": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "searchhost.exe": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "program manager": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "unknown": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "gjs": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "gnome-control-center": [
+      "system_admin",
+      "app:os-utility"
+    ],
+    "explorer.exe": [
+      "file_management",
+      "app:file-explorer"
+    ],
+    "org.gnome.nautilus": [
+      "file_management",
+      "app:file-explorer"
+    ],
+    "zoom": [
+      "meetings",
+      "app:zoom"
+    ],
+    "bluemail": [
+      "communication",
+      "app:bluemail"
+    ],
+    "soffice.bin": [
+      "writing",
+      "app:document"
+    ],
+    "excel.exe": [
+      "writing",
+      "app:document"
+    ],
+    "okular": [
+      "writing",
+      "app:document"
+    ],
+    "gnome-text-editor": [
+      "writing",
+      "app:document"
+    ],
+    "gnome-terminal": [
+      "development",
+      "app:terminal"
+    ],
+    "vlc.exe": [
+      "media",
+      "app:media"
+    ],
+    "photos.exe": [
+      "media",
+      "app:media"
+    ],
+    "mstsc.exe": [
+      "system_admin",
+      "app:remote-desktop"
+    ]
+  },
+  "browser_apps": [
+    "Brave Browser",
+    "Brave-browser",
+    "Comet",
+    "Firefox",
+    "Google Chrome",
+    "Microsoft Edge",
+    "Opera",
+    "Safari",
+    "chrome.exe",
+    "firefox.exe",
+    "firefox_firefox",
+    "msedge.exe",
+    "google-chrome"
+  ],
+  "category_aliases": {
+    "cloud_infra": "development",
+    "data_analysis": "development",
+    "design_creative": "writing",
+    "finance_admin": "personal_distraction",
+    "local_tool": "development",
+    "other_app": "other",
+    "search": "other",
+    "social_distraction": "personal_distraction",
+    "travel_logistics": "personal_distraction"
+  },
+  "title_rules": [
+    {
+      "category": "meetings",
+      "contains": [
+        "Meet",
+        "google meet",
+        "zoom meeting",
+        "camera and microphone recording"
+      ],
+      "rule": "title:meeting"
+    },
+    {
+      "category": "writing",
+      "contains": [
+        "online latex editor overleaf",
+        "overleaf",
+        "google docs",
+        "google drive",
+        "google sheets",
+        "sharepoint",
+        "microsoft word",
+        "powerpoint",
+        "excel",
+        "assignment",
+        ".pdf",
+        "pdf ",
+        "miro",
+        "presentation",
+        "presentazione",
+        "presentazioni",
+        ".docx",
+        ".xlsx",
+        "deepl",
+        "translate",
+        "google slides",
+        "slides",
+        "switch drive",
+        "switchdrive"
+      ],
+      "rule": "title:writing-docs"
+    },
+    {
+      "category": "research",
+      "contains": [
+        "arxiv",
+        "scholar.google",
+        "nature.com",
+        "ieee",
+        "acm",
+        "springer",
+        "researchgate",
+        "paper",
+        "conference template",
+        "conference ranks",
+        "gnnexplainer",
+        "slurm",
+        "blas_user_guide",
+        "citi - collaborative",
+        "icorsi",
+        "course:",
+        "computer architecture",
+        "sensorlm",
+        "funding",
+        "snsf",
+        "mysnf",
+        "eth zurich",
+        "phd programme",
+        "people-centered computing",
+        "research",
+        "research paper",
+        "federated",
+        "federated learning",
+        "security and privacy",
+        "privacy and security",
+        "machine learning",
+        "deep learning",
+        "neural",
+        "dataset",
+        "datasets",
+        "model",
+        "models",
+        "wiley",
+        "onlinelibrary",
+        "mit.edu",
+        "zenodo",
+        "usi.ch",
+        "usi",
+        "universita della svizzera italiana",
+        "moodle",
+        "quiz",
+        "course",
+        "session",
+        "lecture",
+        "exercise",
+        "sheet",
+        "amanote",
+        "physionet",
+        "[2310.",
+        "course registrations",
+        "citi course",
+        "universum",
+        "survey",
+        "aware",
+        "localization",
+        "cerca con google",
+        "google scholar",
+        "ramesh raskar",
+        "anna marie kermarrec",
+        "ren yi",
+        "ijs",
+        "jsi",
+        "traditional ml",
+        "traditional_ml",
+        "optuna",
+        "causal inference",
+        "causalcgm",
+        "smartchange",
+        "infinitygen",
+        "salt-gnn",
+        "population_based",
+        "train_",
+        "main_correct",
+        "cogload"
+      ],
+      "rule": "title:research"
+    },
+    {
+      "category": "development",
+      "contains": [
+        "jupyterlab",
+        "jupyter",
+        "github",
+        "gitlab",
+        "stackoverflow",
+        "pytorch",
+        "attributeerror",
+        "keyerror",
+        "valueerror",
+        "weights & biases",
+        "wandb",
+        "localhost",
+        "127.0.0.1",
+        "ssh:",
+        "screen -r",
+        "cuda_visible_devices",
+        "python main.py",
+        "infinitygen",
+        "usi-servers-admin",
+        "send new request",
+        "colab",
+        ".ipynb",
+        "simpletuner",
+        "modal",
+        "bghira/",
+        "/notebooks/",
+        "tensorboard",
+        "s3 bucket",
+        "my pods",
+        "pod",
+        "fraudgt",
+        "fraud_graph",
+        "aml",
+        "gnn",
+        "transformerconv",
+        "evaluate_homo",
+        "python",
+        "script python",
+        "edge message",
+        "costruzione",
+        "risoluzione",
+        "sparsita",
+        "anomalie",
+        "anomaly detection",
+        "prism",
+        "scikit-learn"
+      ],
+      "rule": "title:development"
+    },
+    {
+      "category": "ai_assistant",
+      "contains": [
+        "chatgpt",
+        "google gemini",
+        "copilot",
+        "claude",
+        "perplexity",
+        "chat",
+        "new chat",
+        "playground",
+        "branchgpt"
+      ],
+      "rule": "title:ai-assistant"
+    },
+    {
+      "category": "communication",
+      "contains": [
+        "outlook",
+        "gmail",
+        "inbox",
+        "calendar",
+        "microsoft teams",
+        "slack",
+        "whatsapp",
+        "telegram",
+        "roundcube webmail",
+        "element |",
+        "webmail",
+        "prejeto"
+      ],
+      "rule": "title:communication"
+    },
+    {
+      "category": "design_creative",
+      "contains": [
+        "figma",
+        "webflow",
+        "draw.io",
+        "whiteboard"
+      ],
+      "rule": "title:design"
+    },
+    {
+      "category": "media",
+      "contains": [
+        "youtube",
+        "netflix",
+        "spotify",
+        "audio playing",
+        "sky go",
+        "music",
+        "twitch",
+        "raiplay",
+        "mediaset",
+        "diretta tv",
+        "disney",
+        "disney+",
+        "anime"
+      ],
+      "rule": "title:media"
+    },
+    {
+      "category": "social_distraction",
+      "contains": [
+        "facebook",
+        "instagram",
+        "reddit",
+        "discord",
+        "twitter",
+        "linkedin",
+        "r/",
+        "x.com"
+      ],
+      "rule": "title:social"
+    },
+    {
+      "category": "game_distraction",
+      "contains": [
+        "shell shockers",
+        "shellshock",
+        "deathegg",
+        "krunker",
+        "tetris",
+        "sudoku",
+        "pacman",
+        "game",
+        "hltv"
+      ],
+      "rule": "title:game"
+    },
+    {
+      "category": "finance_admin",
+      "contains": [
+        "bank",
+        "postfinance",
+        "invoice",
+        "reimbursement",
+        "rimborsi",
+        "adminappsts",
+        "e-uprava",
+        "insurance",
+        "calculator",
+        "letter format",
+        "webstamp",
+        "e-uprava"
+      ],
+      "rule": "title:finance-admin"
+    },
+    {
+      "category": "travel_logistics",
+      "contains": [
+        "british airways",
+        "iberia",
+        "trainline",
+        "flight",
+        "hotel",
+        "booking",
+        "google maps",
+        "weather"
+      ],
+      "rule": "title:travel"
+    }
+  ],
+  "web_domain_rules": [
+    {
+      "category": "ai_assistant",
+      "domains": [
+        "chatgpt.com",
+        "claude.ai",
+        "gemini.google.com",
+        "copilot.microsoft.com",
+        "perplexity.ai"
+      ],
+      "rule": "domain:ai-assistant"
+    },
+    {
+      "category": "communication",
+      "domains": [
+        "mail.google.com",
+        "outlook.office.com",
+        "m365.cloud.microsoft",
+        "teams.microsoft.com"
+      ],
+      "rule": "domain:communication"
+    },
+    {
+      "category": "meetings",
+      "domains": [
+        "meet.google.com",
+        "zoom.us",
+        "webex.com"
+      ],
+      "rule": "domain:meeting"
+    },
+    {
+      "category": "writing",
+      "domains": [
+        "docs.google.com",
+        "drive.google.com",
+        "keep.google.com",
+        "overleaf.com",
+        "sharepoint.com",
+        "dropbox.com"
+      ],
+      "rule": "domain:writing-docs"
+    },
+    {
+      "category": "research",
+      "domains": [
+        "arxiv.org",
+        "scholar.google.com",
+        "nature.com",
+        "ieee.org",
+        "ieeexplore.ieee.org",
+        "acm.org",
+        "dl.acm.org",
+        "springer.com",
+        "link.springer.com",
+        "frontiersin.org",
+        "openreview.net",
+        "researchgate.net",
+        "ncbi.nlm.nih.gov",
+        "isca-archive.org",
+        "robots.ox.ac.uk",
+        "research.google",
+        "dt4h.org",
+        "snf.ch",
+        "mysnf.ch",
+        "scholargps.com",
+        "wiley.com",
+        "onlinelibrary.wiley.com",
+        "aaai.org",
+        "ethz.ch",
+        "mit.edu",
+        "uni-lj.si",
+        "ukri.org",
+        "liquid.ai",
+        "fairlearn.org",
+        "inf.usi.ch",
+        "pc.inf.usi.ch",
+        "media.mit.edu",
+        "ischoportal.mit.edu",
+        "atlas.mit.edu",
+        "usi.qualtrics.com",
+        "ec.europa.eu",
+        "precisionconference.com",
+        "new.precisionconference.com",
+        "osf.io",
+        "imotions.com",
+        "dis.ijs.si",
+        "ubicomp.org",
+        "thelancet.com",
+        "en.wikipedia.org",
+        "ijs.si",
+        "search.usi.ch",
+        "journals.sagepub.com",
+        "scholarshipdb.net",
+        "authors.elsevier.com",
+        "timeshighereducation.com"
+      ],
+      "rule": "domain:research"
+    },
+    {
+      "category": "development",
+      "domains": [
+        "github.com",
+        "gitlab.com",
+        "stackoverflow.com",
+        "stackexchange.com",
+        "jupyter.org",
+        "baeldung.com",
+        "northflank.com"
+      ],
+      "rule": "domain:development"
+    },
+    {
+      "category": "local_tool",
+      "domains": [
+        "wandb.ai",
+        "localhost",
+        "127.0.0.1"
+      ],
+      "rule": "domain:local-dev-tool"
+    },
+    {
+      "category": "cloud_infra",
+      "domains": [
+        "aws.amazon.com",
+        "console.aws.amazon.com",
+        "programs.nvidia.com",
+        "ocodatalab.emteqlabs.com",
+        "emteqlabs.com"
+      ],
+      "rule": "domain:cloud-infra"
+    },
+    {
+      "category": "design_creative",
+      "domains": [
+        "figma.com",
+        "webflow.io",
+        "canva.com",
+        "miro.com"
+      ],
+      "rule": "domain:design"
+    },
+    {
+      "category": "media",
+      "domains": [
+        "youtube.com",
+        "spotify.com",
+        "netflix.com",
+        "photos.google.com",
+        "time.mk",
+        "swissinfo.ch"
+      ],
+      "rule": "domain:media"
+    },
+    {
+      "category": "social_distraction",
+      "domains": [
+        "facebook.com",
+        "fbcdn.net",
+        "instagram.com",
+        "reddit.com",
+        "x.com",
+        "twitter.com",
+        "linkedin.com",
+        "discord.com"
+      ],
+      "rule": "domain:social"
+    },
+    {
+      "category": "game_distraction",
+      "domains": [
+        "shellshock.io",
+        "deathegg.world",
+        "krunker.io",
+        "tetris.com",
+        "poki.com"
+      ],
+      "rule": "domain:game"
+    },
+    {
+      "category": "finance_admin",
+      "domains": [
+        "postfinance.ch",
+        "kb.mk",
+        "pbz.hr",
+        "online.kb.mk",
+        "iherb.com",
+        "e-uprava.gov.si",
+        "oss.uredjenazemlja.hr"
+      ],
+      "rule": "domain:finance-admin"
+    },
+    {
+      "category": "travel_logistics",
+      "domains": [
+        "britishairways.com",
+        "iberia.com",
+        "momondo.com",
+        "thetrainline.com",
+        "doodle.com",
+        "evinjeta.dars.si"
+      ],
+      "rule": "domain:travel"
+    },
+    {
+      "category": "personal_distraction",
+      "domains": [
+        "njuskalo.hr",
+        "lidl.com",
+        "primerjam.si"
+      ],
+      "rule": "domain:personal-distraction"
+    },
+    {
+      "category": "system_admin",
+      "domains": [
+        "usi.xurrent.com"
+      ],
+      "rule": "domain:system-admin"
+    }
+  ]
+}
