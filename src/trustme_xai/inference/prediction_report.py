@@ -14,16 +14,15 @@ from trustme_xai.feature_pipeline.production_features import (
     PRODUCTION_WINDOW_MINUTES,
 )
 from trustme_xai.inference.model_runtime import CURRENT_MODEL_SHA256, ModelBundle
-from trustme_xai.inference.shap_explainer import (
-    LocalShapExplanation,
-    explain_target_prediction,
-)
+# from trustme_xai.inference.shap_explainer import (
+#     LocalShapExplanation,
+#     explain_target_prediction,
+# )
 
 
 class QuestionPrediction(TypedDict):
     id: str
     prediction: float
-    explanation: LocalShapExplanation
 
 
 class PredictionReport(TypedDict):
@@ -42,7 +41,7 @@ def build_prediction_report(
     user_id: str,
     as_of: str | pd.Timestamp,
 ) -> PredictionReport:
-    """Build predictions and local shap values for q1-q9
+    """Build predictions for q1-q9
 
     Args:
         bundle: fitted models for all answer targets
@@ -71,23 +70,18 @@ def build_prediction_report(
     if feature_time != report_time:
         raise ValueError("as_of does not match current_features")
 
-    questions: list[QuestionPrediction] = []
-    for question_id, target in QUESTION_TARGETS.items():
-        target_model = bundle.target_models.get(target)
-        if target_model is None:
+    for target in QUESTION_TARGETS.values():
+        if target not in bundle.target_models:
             raise ValueError(f"bundle is missing target model: {target}")
 
-        prediction, explanation = explain_target_prediction(
-            target_model,
-            current_features,
-        )
-        questions.append(
-            {
-                "id": question_id,
-                "prediction": prediction,
-                "explanation": explanation,
-            }
-        )
+    predictions = bundle.predict(current_features).iloc[0]
+    questions: list[QuestionPrediction] = [
+        {
+            "id": question_id,
+            "prediction": float(predictions[target]),
+        }
+        for question_id, target in QUESTION_TARGETS.items()
+    ]
 
     generated_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return {
