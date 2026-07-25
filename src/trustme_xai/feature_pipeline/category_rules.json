@@ -1,1085 +1,322 @@
 {
   "categories": [
-    "ai_assistant",
-    "browser_uncategorized",
-    "calendar_tasks",
-    "communication",
-    "development",
-    "file_management",
-    "game_distraction",
-    "media",
-    "meetings",
-    "other",
-    "personal_distraction",
-    "research",
-    "system_admin",
-    "writing"
-  ],
-  "app_exact_rules": {
-    "1password": [
-      "system_admin",
-      "app:password-manager"
-    ],
-    "1password 7": [
-      "system_admin",
-      "app:password-manager"
-    ],
-    "acrobat": [
-      "writing",
-      "app:acrobat"
-    ],
-    "acrobat.exe": [
-      "writing",
-      "app:acrobat"
-    ],
-    "activity monitor": [
-      "system_admin",
-      "app:activity-monitor"
-    ],
-    "android studio": [
-      "development",
-      "app:android-studio"
-    ],
-    "anyconnect": [
-      "system_admin",
-      "app:vpn"
-    ],
-    "app store": [
-      "system_admin",
-      "app:app-store"
-    ],
-    "archive utility": [
-      "file_management",
-      "app:archive-utility"
-    ],
-    "arduino ide": [
-      "development",
-      "app:arduino"
-    ],
-    "automator": [
-      "system_admin",
-      "app:automator"
-    ],
-    "avgui.exe": [
-      "system_admin",
-      "app:avg"
-    ],
-    "azure data studio": [
-      "development",
-      "app:azure-data-studio"
-    ],
-    "balatro": [
-      "game_distraction",
-      "app:balatro"
-    ],
-    "busycal": [
-      "calendar_tasks",
-      "app:busycal"
-    ],
-    "calculator": [
-      "system_admin",
-      "app:calculator"
-    ],
-    "calendar": [
-      "calendar_tasks",
-      "app:calendar"
-    ],
-    "chatgpt": [
-      "ai_assistant",
-      "app:chatgpt"
-    ],
-    "cisco secure client": [
-      "system_admin",
-      "app:vpn"
-    ],
-    "cmd.exe": [
-      "development",
-      "app:cmd"
-    ],
-    "code": [
-      "development",
-      "app:vscode"
-    ],
-    "code.exe": [
-      "development",
-      "app:vscode"
-    ],
-    "dictionary": [
-      "research",
-      "app:dictionary"
-    ],
-    "discord": [
-      "social_distraction",
-      "app:discord"
-    ],
-    "docker desktop": [
-      "development",
-      "app:docker"
-    ],
-    "draw.io": [
-      "design_creative",
-      "app:drawio"
-    ],
-    "element.exe": [
-      "communication",
-      "app:element"
-    ],
-    "epic games launcher": [
-      "game_distraction",
-      "app:epic-games"
-    ],
-    "facetime": [
-      "communication",
-      "app:facetime"
-    ],
-    "finder": [
-      "file_management",
-      "app:finder"
-    ],
-    "fork": [
-      "development",
-      "app:fork"
-    ],
-    "forklift": [
-      "file_management",
-      "app:forklift"
-    ],
-    "geometry dash": [
-      "game_distraction",
-      "app:geometry-dash"
-    ],
-    "globalprotect": [
-      "system_admin",
-      "app:vpn"
-    ],
-    "intellij idea": [
-      "development",
-      "app:intellij"
-    ],
-    "iterm2": [
-      "development",
-      "app:iterm"
-    ],
-    "kingdom": [
-      "game_distraction",
-      "app:kingdom"
-    ],
-    "logi options+": [
-      "system_admin",
-      "app:logitech-options"
-    ],
-    "mail": [
-      "communication",
-      "app:mail"
-    ],
-    "messages": [
-      "communication",
-      "app:messages"
-    ],
-    "microsoft excel": [
-      "writing",
-      "app:excel"
-    ],
-    "microsoft onenote": [
-      "writing",
-      "app:onenote"
-    ],
-    "microsoft outlook": [
-      "communication",
-      "app:outlook"
-    ],
-    "microsoft powerpoint": [
-      "writing",
-      "app:powerpoint"
-    ],
-    "microsoft remote desktop": [
-      "system_admin",
-      "app:remote-desktop"
-    ],
-    "microsoft teams": [
-      "meetings",
-      "app:teams"
-    ],
-    "microsoft teams (work or school)": [
-      "meetings",
-      "app:teams"
-    ],
-    "microsoft word": [
-      "writing",
-      "app:word"
-    ],
-    "minecraft launcher": [
-      "game_distraction",
-      "app:minecraft"
-    ],
-    "mintty.exe": [
-      "development",
-      "app:mintty"
-    ],
-    "mongodb compass": [
-      "data_analysis",
-      "app:mongodb-compass"
-    ],
-    "mtga": [
-      "game_distraction",
-      "app:mtga"
-    ],
-    "music": [
-      "media",
-      "app:music"
-    ],
-    "mysqlworkbench": [
-      "development",
-      "app:mysql-workbench"
-    ],
-    "news tower": [
-      "media",
-      "app:news"
-    ],
-    "nordpass": [
-      "system_admin",
-      "app:password-manager"
-    ],
-    "nordvpn": [
-      "system_admin",
-      "app:vpn"
-    ],
-    "notepad++.exe": [
-      "development",
-      "app:notepad++"
-    ],
-    "notepad.exe": [
-      "writing",
-      "app:notepad"
-    ],
-    "notes": [
-      "writing",
-      "app:notes"
-    ],
-    "notion": [
-      "writing",
-      "app:notion"
-    ],
-    "notion calendar": [
-      "calendar_tasks",
-      "app:notion-calendar"
-    ],
-    "numbers": [
-      "writing",
-      "app:numbers"
-    ],
-    "numi": [
-      "system_admin",
-      "app:calculator"
-    ],
-    "obsidian": [
-      "writing",
-      "app:obsidian"
-    ],
-    "ocosense": [
-      "data_analysis",
-      "app:ocosense"
-    ],
-    "onedrive": [
-      "file_management",
-      "app:onedrive"
-    ],
-    "onedrive.exe": [
-      "file_management",
-      "app:onedrive"
-    ],
-    "outlook.exe": [
-      "communication",
-      "app:outlook"
-    ],
-    "pages": [
-      "writing",
-      "app:pages"
-    ],
-    "photos": [
-      "media",
-      "app:photos"
-    ],
-    "postman": [
-      "development",
-      "app:postman"
-    ],
-    "preview": [
-      "writing",
-      "app:preview"
-    ],
-    "print center": [
-      "system_admin",
-      "app:print-center"
-    ],
-    "print centre": [
-      "system_admin",
-      "app:print-center"
-    ],
-    "python": [
-      "development",
-      "app:python"
-    ],
-    "quicktime player": [
-      "media",
-      "app:quicktime"
-    ],
-    "rakuten viber": [
-      "communication",
-      "app:viber"
-    ],
-    "reminders": [
-      "calendar_tasks",
-      "app:reminders"
-    ],
-    "sky go": [
-      "media",
-      "app:sky-go"
-    ],
-    "skype.exe": [
-      "communication",
-      "app:skype"
-    ],
-    "slack": [
-      "communication",
-      "app:slack"
-    ],
-    "spotify": [
-      "media",
-      "app:spotify"
-    ],
-    "stats": [
-      "system_admin",
-      "app:stats"
-    ],
-    "steam": [
-      "game_distraction",
-      "app:steam"
-    ],
-    "steam helper": [
-      "game_distraction",
-      "app:steam"
-    ],
-    "stream deck": [
-      "system_admin",
-      "app:stream-deck"
-    ],
-    "system information": [
-      "system_admin",
-      "app:system-information"
-    ],
-    "system settings": [
-      "system_admin",
-      "app:system-settings"
-    ],
-    "teamviewer": [
-      "system_admin",
-      "app:teamviewer"
-    ],
-    "telegram": [
-      "communication",
-      "app:telegram"
-    ],
-    "tencentmeeting": [
-      "meetings",
-      "app:tencent-meeting"
-    ],
-    "terminal": [
-      "development",
-      "app:terminal"
-    ],
-    "texshop": [
-      "writing",
-      "app:texshop"
-    ],
-    "textedit": [
-      "writing",
-      "app:textedit"
-    ],
-    "tlauncher": [
-      "game_distraction",
-      "app:tlauncher"
-    ],
-    "trae": [
-      "development",
-      "app:trae"
-    ],
-    "unity": [
-      "development",
-      "app:unity"
-    ],
-    "unity hub": [
-      "development",
-      "app:unity-hub"
-    ],
-    "unzip - rar zip 7z unarchiver": [
-      "file_management",
-      "app:archive-utility"
-    ],
-    "viber": [
-      "communication",
-      "app:viber"
-    ],
-    "virtualboxvm.exe": [
-      "development",
-      "app:virtualbox"
-    ],
-    "warp": [
-      "development",
-      "app:warp"
-    ],
-    "whatsapp": [
-      "communication",
-      "app:whatsapp"
-    ],
-    "windowsterminal.exe": [
-      "development",
-      "app:terminal"
-    ],
-    "winword.exe": [
-      "writing",
-      "app:word"
-    ],
-    "zoom.us": [
-      "meetings",
-      "app:zoom"
-    ],
-    "zotero": [
-      "research",
-      "app:zotero"
-    ],
-    "pickerhost.exe": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "applicationframehost.exe": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "cloudnotifications.exe": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "shellexperiencehost.exe": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "searchhost.exe": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "program manager": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "unknown": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "gjs": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "gnome-control-center": [
-      "system_admin",
-      "app:os-utility"
-    ],
-    "explorer.exe": [
-      "file_management",
-      "app:file-explorer"
-    ],
-    "org.gnome.nautilus": [
-      "file_management",
-      "app:file-explorer"
-    ],
-    "zoom": [
-      "meetings",
-      "app:zoom"
-    ],
-    "bluemail": [
-      "communication",
-      "app:bluemail"
-    ],
-    "soffice.bin": [
-      "writing",
-      "app:document"
-    ],
-    "excel.exe": [
-      "writing",
-      "app:document"
-    ],
-    "okular": [
-      "writing",
-      "app:document"
-    ],
-    "gnome-text-editor": [
-      "writing",
-      "app:document"
-    ],
-    "gnome-terminal": [
-      "development",
-      "app:terminal"
-    ],
-    "vlc.exe": [
-      "media",
-      "app:media"
-    ],
-    "photos.exe": [
-      "media",
-      "app:media"
-    ],
-    "mstsc.exe": [
-      "system_admin",
-      "app:remote-desktop"
-    ]
-  },
-  "browser_apps": [
-    "Brave Browser",
-    "Brave-browser",
-    "Comet",
-    "Firefox",
-    "Google Chrome",
-    "Microsoft Edge",
-    "Opera",
-    "Safari",
-    "chrome.exe",
-    "firefox.exe",
-    "firefox_firefox",
-    "msedge.exe",
-    "google-chrome"
-  ],
-  "category_aliases": {
-    "cloud_infra": "development",
-    "data_analysis": "development",
-    "design_creative": "writing",
-    "finance_admin": "personal_distraction",
-    "local_tool": "development",
-    "other_app": "other",
-    "search": "other",
-    "social_distraction": "personal_distraction",
-    "travel_logistics": "personal_distraction"
-  },
-  "title_rules": [
     {
-      "category": "meetings",
-      "contains": [
-        "Meet",
-        "google meet",
-        "zoom meeting",
-        "camera and microphone recording"
+      "name": [
+        "Work",
+        "Meetings"
       ],
-      "rule": "title:meeting"
+      "rule": {
+        "type": "regex",
+        "regex": "zoom\\.us|microsoft\\ teams|Meet|webex\\.com|microsoft\\ teams\\ \\(work\\ or\\ school\\)|meet\\.google\\.com|zoom\\ meeting|tencentmeeting|camera\\ and\\ microphone\\ recording|google\\ meet|zoom",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#9999FF"
+      },
+      "id": 23
     },
     {
-      "category": "writing",
-      "contains": [
-        "online latex editor overleaf",
-        "overleaf",
-        "google docs",
-        "google drive",
-        "google sheets",
-        "sharepoint",
-        "microsoft word",
-        "powerpoint",
-        "excel",
-        "assignment",
-        ".pdf",
-        "pdf ",
-        "miro",
-        "presentation",
-        "presentazione",
-        "presentazioni",
-        ".docx",
-        ".xlsx",
-        "deepl",
-        "translate",
-        "google slides",
-        "slides",
-        "switch drive",
-        "switchdrive"
+      "name": [
+        "Work",
+        "AI Assistant"
       ],
-      "rule": "title:writing-docs"
+      "rule": {
+        "type": "regex",
+        "regex": "claude\\.ai|perplexity\\.ai|branchgpt|copilot\\.microsoft\\.com|perplexity|chatgpt\\.com|chatgpt|playground|gemini\\.google\\.com|google\\ gemini|chat|copilot|claude|new\\ chat",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#FF9999"
+      },
+      "id": 22
     },
     {
-      "category": "research",
-      "contains": [
-        "arxiv",
-        "scholar.google",
-        "nature.com",
-        "ieee",
-        "acm",
-        "springer",
-        "researchgate",
-        "paper",
-        "conference template",
-        "conference ranks",
-        "gnnexplainer",
-        "slurm",
-        "blas_user_guide",
-        "citi - collaborative",
-        "icorsi",
-        "course:",
-        "computer architecture",
-        "sensorlm",
-        "funding",
-        "snsf",
-        "mysnf",
-        "eth zurich",
-        "phd programme",
-        "people-centered computing",
-        "research",
-        "research paper",
-        "federated",
-        "federated learning",
-        "security and privacy",
-        "privacy and security",
-        "machine learning",
-        "deep learning",
-        "neural",
-        "dataset",
-        "datasets",
-        "model",
-        "models",
-        "wiley",
-        "onlinelibrary",
-        "mit.edu",
-        "zenodo",
-        "usi.ch",
-        "usi",
-        "universita della svizzera italiana",
-        "moodle",
-        "quiz",
-        "course",
-        "session",
-        "lecture",
-        "exercise",
-        "sheet",
-        "amanote",
-        "physionet",
-        "[2310.",
-        "course registrations",
-        "citi course",
-        "universum",
-        "survey",
-        "aware",
-        "localization",
-        "cerca con google",
-        "google scholar",
-        "ramesh raskar",
-        "anna marie kermarrec",
-        "ren yi",
-        "ijs",
-        "jsi",
-        "traditional ml",
-        "traditional_ml",
-        "optuna",
-        "causal inference",
-        "causalcgm",
-        "smartchange",
-        "infinitygen",
-        "salt-gnn",
-        "population_based",
-        "train_",
-        "main_correct",
-        "cogload"
+      "name": [
+        "Work"
       ],
-      "rule": "title:research"
+      "rule": {
+        "type": "regex",
+        "regex": "Google Docs|libreoffice|ReText|VirtualBox|rimborsi|iherb\\.com|e\\-uprava|insurance|online\\.kb\\.mk|oss\\.uredjenazemlja\\.hr|postfinance\\.ch|bank|postfinance|letter\\ format|adminappsts|calculator|invoice|reimbursement|pbz\\.hr|e\\-uprava\\.gov\\.si|kb\\.mk|webstamp",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#0F0",
+        "score": 10
+      },
+      "id": 0
     },
     {
-      "category": "development",
-      "contains": [
-        "jupyterlab",
-        "jupyter",
-        "github",
-        "gitlab",
-        "stackoverflow",
-        "pytorch",
-        "attributeerror",
-        "keyerror",
-        "valueerror",
-        "weights & biases",
-        "wandb",
-        "localhost",
-        "127.0.0.1",
-        "ssh:",
-        "screen -r",
-        "cuda_visible_devices",
-        "python main.py",
-        "infinitygen",
-        "usi-servers-admin",
-        "send new request",
-        "colab",
-        ".ipynb",
-        "simpletuner",
-        "modal",
-        "bghira/",
-        "/notebooks/",
-        "tensorboard",
-        "s3 bucket",
-        "my pods",
-        "pod",
-        "fraudgt",
-        "fraud_graph",
-        "aml",
-        "gnn",
-        "transformerconv",
-        "evaluate_homo",
-        "python",
-        "script python",
-        "edge message",
-        "costruzione",
-        "risoluzione",
-        "sparsita",
-        "anomalie",
-        "anomaly detection",
-        "prism",
-        "scikit-learn"
+      "name": [
+        "Work",
+        "Programming"
       ],
-      "rule": "title:development"
+      "rule": {
+        "type": "regex",
+        "regex": "py|Code|GitHub|Stack\\s*Overflow|BitBucket|Gitlab|GitKraken|GitHub\\s*Desktop|VSCode|Code\\.exe|Visual\\s*Studio|PyCharm|Rider|IntelliJ|Eclipse|NetBeans|CLion|WebStorm|DataGrip|Spyder|Jupyter|Anaconda|Vim|Neovim|Kate|Gedit|Notepad\\+\\+|Sublime|Atom|Ghidra|Scite|Xcode|PowerShell|cmd\\.exe|bash|zsh|fish|gcc|g\\+\\+|make|cmake|cargo|npm|node|python|java|r\\.exe|Matlab|SPSS|RStudio|baeldung\\.com|localhost|transformerconv|gitlab\\.com|cuda_visible_devices|bghira/|attributeerror|aml|github\\.com|ocodatalab\\.emteqlabs\\.com|wandb|postman|terminal|colab|anomalie|fraud_graph|python|fork|gnn|screen\\ \\-r|ocosense|tensorboard|gnome\\-terminal|\\.ipynb|iterm2|modal|my\\ pods|programs\\.nvidia\\.com|stackexchange\\.com|azure\\ data\\ studio|infinitygen|script\\ python|console\\.aws\\.amazon\\.com|code|aws\\.amazon\\.com|keyerror|stackoverflow|ssh:|trae|intellij\\ idea|send\\ new\\ request|simpletuner|weights\\ \\&\\ biases|arduino\\ ide|mintty\\.exe|127\\.0\\.0\\.1|anomaly\\ detection|unity|prism|s3\\ bucket|virtualboxvm\\.exe|northflank\\.com|jupyter|pytorch|sparsita|docker\\ desktop|evaluate_homo|/notebooks/|edge\\ message|gitlab|github|cmd\\.exe|python\\ main\\.py|valueerror|code\\.exe|costruzione|scikit\\-learn|wandb\\.ai|fraudgt|warp|usi\\-servers\\-admin|jupyterlab|stackoverflow\\.com|unity\\ hub|jupyter\\.org|mysqlworkbench|notepad\\+\\+\\.exe|android\\ studio|pod|risoluzione|mongodb\\ compass|windowsterminal\\.exe|emteqlabs\\.com",
+        "ignore_case": true
+      },
+      "id": 1,
+      "data": {}
     },
     {
-      "category": "ai_assistant",
-      "contains": [
-        "chatgpt",
-        "google gemini",
-        "copilot",
-        "claude",
-        "perplexity",
-        "chat",
-        "new chat",
-        "playground",
-        "branchgpt"
+      "name": [
+        "Work",
+        "Programming",
+        "ActivityWatch"
       ],
-      "rule": "title:ai-assistant"
+      "rule": {
+        "type": "regex",
+        "regex": "ActivityWatch|aw-",
+        "ignore_case": true
+      },
+      "id": 2
     },
     {
-      "category": "communication",
-      "contains": [
-        "outlook",
-        "gmail",
-        "inbox",
-        "calendar",
-        "microsoft teams",
-        "slack",
-        "whatsapp",
-        "telegram",
-        "roundcube webmail",
-        "element |",
-        "webmail",
-        "prejeto"
+      "name": [
+        "Work",
+        "Image"
       ],
-      "rule": "title:communication"
+      "rule": {
+        "type": "regex",
+        "regex": "matplotlib|Figure|GIMP|Inkscape|Photoshop|Illustrator|Affinity\\s*Photo|Affinity\\s*Designer|CorelDRAW|Paint\\.NET|MSPaint|Paint3D|Krita|Pixlr|Photopea|Figma|Canva|XD|Lightroom|Darktable|RawTherapee|Capture\\s*One|Snipping\\s*Tool|Photos\\.exe|Eog|webflow|figma|miro\\.com|draw\\.io|figma\\.com|whiteboard|canva\\.com|webflow\\.io",
+        "ignore_case": true
+      },
+      "id": 3,
+      "data": {}
     },
     {
-      "category": "design_creative",
-      "contains": [
-        "figma",
-        "webflow",
-        "draw.io",
-        "whiteboard"
+      "name": [
+        "Work",
+        "Video"
       ],
-      "rule": "title:design"
+      "rule": {
+        "type": "regex",
+        "regex": "Kdenlive|Premiere|After\\s*Effects|DaVinci\\s*Resolve|Shotcut|Olive|Openshot|Vegas|Final\\s*Cut|Lightworks|HitFilm|Avid|Blender|Camtasia|OBS|VLC|Media\\s*Player|QuickTime|ffmpeg|HandBrake",
+        "ignore_case": true
+      },
+      "id": 4,
+      "data": {}
     },
     {
-      "category": "media",
-      "contains": [
-        "youtube",
-        "netflix",
-        "spotify",
-        "audio playing",
-        "sky go",
-        "music",
-        "twitch",
-        "raiplay",
-        "mediaset",
-        "diretta tv",
-        "disney",
-        "disney+",
-        "anime"
+      "name": [
+        "Work",
+        "Audio"
       ],
-      "rule": "title:media"
+      "rule": {
+        "type": "regex",
+        "regex": "Audacity",
+        "ignore_case": true
+      },
+      "id": 5,
+      "data": {}
     },
     {
-      "category": "social_distraction",
-      "contains": [
-        "facebook",
-        "instagram",
-        "reddit",
-        "discord",
-        "twitter",
-        "linkedin",
-        "r/",
-        "x.com"
+      "name": [
+        "Work",
+        "3D"
       ],
-      "rule": "title:social"
+      "rule": {
+        "type": "regex",
+        "regex": "Blender",
+        "ignore_case": true
+      },
+      "id": 6,
+      "data": {}
     },
     {
-      "category": "game_distraction",
-      "contains": [
-        "shell shockers",
-        "shellshock",
-        "deathegg",
-        "krunker",
-        "tetris",
-        "sudoku",
-        "pacman",
-        "game",
-        "hltv"
+      "name": [
+        "Media",
+        "Games"
       ],
-      "rule": "title:game"
+      "rule": {
+        "type": "regex",
+        "regex": "Minecraft|RimWorld|Steam|Epic\\s*Games\\s*Launcher|EpicGamesLauncher|Origin|EA\\s*App|Battle\\.net|Blizzard|Ubisoft\\s*Connect|Uplay|GOG\\s*Galaxy|Itch\\.io|Valorant|League\\s*of\\s*Legends|LoLClient|CSGO|Counter\\-Strike|Dota|Fortnite|Apex|Overwatch|PUBG|Roblox|Terraria|Stardew|Kerbal|Factorio|Satisfactory|Cities:\\s*Skylines|Skyrim|Fallout|Cyberpunk|Baldur'?s\\s*Gate|Hades|Celeste|Rocket\\s*League|Among\\s*Us|balatro|kingdom|krunker\\.io|game|krunker|tetris\\.com|tlauncher|tetris|shellshock\\.io|geometry\\ dash|poki\\.com|steam|sudoku|mtga|pacman|steam\\ helper|hltv|shell\\ shockers|minecraft\\ launcher|deathegg\\.world|deathegg|shellshock|epic\\ games\\ launcher",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#F80"
+      },
+      "id": 7
     },
     {
-      "category": "finance_admin",
-      "contains": [
-        "bank",
-        "postfinance",
-        "invoice",
-        "reimbursement",
-        "rimborsi",
-        "adminappsts",
-        "e-uprava",
-        "insurance",
-        "calculator",
-        "letter format",
-        "webstamp",
-        "e-uprava"
+      "name": [
+        "Media",
+        "Video"
       ],
-      "rule": "title:finance-admin"
+      "rule": {
+        "type": "regex",
+        "regex": "YouTube|Plex|VLC|disney\\+|youtube\\.com|raiplay|vlc\\.exe|netflix\\.com|diretta\\ tv|music|time\\.mk|photos|photos\\.exe|disney|swissinfo\\.ch|mediaset|anime|photos\\.google\\.com|audio\\ playing|netflix|news\\ tower|spotify\\.com|spotify|sky\\ go|youtube|twitch|quicktime\\ player",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#F33"
+      },
+      "id": 8
     },
     {
-      "category": "travel_logistics",
-      "contains": [
-        "british airways",
-        "iberia",
-        "trainline",
-        "flight",
-        "hotel",
-        "booking",
-        "google maps",
-        "weather"
+      "name": [
+        "Media",
+        "Social Media"
       ],
-      "rule": "title:travel"
-    }
-  ],
-  "web_domain_rules": [
-    {
-      "category": "ai_assistant",
-      "domains": [
-        "chatgpt.com",
-        "claude.ai",
-        "gemini.google.com",
-        "copilot.microsoft.com",
-        "perplexity.ai"
-      ],
-      "rule": "domain:ai-assistant"
+      "rule": {
+        "type": "regex",
+        "regex": "reddit|Facebook|Messenger|Instagram|Threads|Twitter|X\\.com|TikTok|Snapchat|Pinterest|LinkedIn|Bluesky|Mastodon|Misskey|Lemmy|Tumblr|devRant|Truth\\s*Social|Gab|Gettr|Parler|Weibo|VK|Reddit|Quora|instagram|discord|linkedin\\.com|reddit\\.com|x\\.com|instagram\\.com|facebook|facebook\\.com|twitter|discord\\.com|r/|fbcdn\\.net|linkedin|reddit|twitter\\.com",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#FCC400"
+      },
+      "id": 9
     },
     {
-      "category": "communication",
-      "domains": [
-        "mail.google.com",
-        "outlook.office.com",
-        "m365.cloud.microsoft",
-        "teams.microsoft.com"
+      "name": [
+        "Media",
+        "Music"
       ],
-      "rule": "domain:communication"
+      "rule": {
+        "type": "regex",
+        "regex": "Spotify|Deezer|Apple\\s*Music|iTunes|YouTube\\s*Music|YT\\s*Music|SoundCloud|Bandcamp|Pandora|Tidal|Amazon\\s*Music|Audible|TuneIn|Mixcloud|Last\\.fm|Napster|Resso|Qobuz|Jamendo|MusicBee|MediaMonkey|Groove\\s*Music|Winamp",
+        "ignore_case": true
+      },
+      "data": {
+        "color": "#A8FC00"
+      },
+      "id": 10
     },
     {
-      "category": "meetings",
-      "domains": [
-        "meet.google.com",
-        "zoom.us",
-        "webex.com"
+      "name": [
+        "Comms"
       ],
-      "rule": "domain:meeting"
+      "rule": {
+        "type": "none"
+      },
+      "data": {
+        "color": "#9FF"
+      },
+      "id": 11
     },
     {
-      "category": "writing",
-      "domains": [
-        "docs.google.com",
-        "drive.google.com",
-        "keep.google.com",
-        "overleaf.com",
-        "sharepoint.com",
-        "dropbox.com"
+      "name": [
+        "Comms",
+        "IM"
       ],
-      "rule": "domain:writing-docs"
+      "rule": {
+        "type": "regex",
+        "regex": "Messenger|Telegram|Signal|WhatsApp|Rambox|Slack|Riot|Element|Discord|Nheko|NeoChat|Mattermost|Teams|Skype|Zoom|WeChat|Viber|LINE|Threema|Wire|IRC|Franz|Ferdi|Rocket\\.Chat|Zulip|Google\\s*Chat|Hangouts|MSN|ICQ|element\\ \\||microsoft\\ teams|element\\.exe|teams\\.microsoft\\.com|outlook\\.exe|prejeto|mail|outlook|bluemail|webmail|roundcube\\ webmail|whatsapp|calendar|messages|m365\\.cloud\\.microsoft|viber|telegram|rakuten\\ viber|skype\\.exe|inbox|facetime|slack|microsoft\\ outlook|gmail|outlook\\.office\\.com|mail\\.google\\.com",
+        "ignore_case": true
+      },
+      "id": 12,
+      "data": {}
     },
     {
-      "category": "research",
-      "domains": [
-        "arxiv.org",
-        "scholar.google.com",
-        "nature.com",
-        "ieee.org",
-        "ieeexplore.ieee.org",
-        "acm.org",
-        "dl.acm.org",
-        "springer.com",
-        "link.springer.com",
-        "frontiersin.org",
-        "openreview.net",
-        "researchgate.net",
-        "ncbi.nlm.nih.gov",
-        "isca-archive.org",
-        "robots.ox.ac.uk",
-        "research.google",
-        "dt4h.org",
-        "snf.ch",
-        "mysnf.ch",
-        "scholargps.com",
-        "wiley.com",
-        "onlinelibrary.wiley.com",
-        "aaai.org",
-        "ethz.ch",
-        "mit.edu",
-        "uni-lj.si",
-        "ukri.org",
-        "liquid.ai",
-        "fairlearn.org",
-        "inf.usi.ch",
-        "pc.inf.usi.ch",
-        "media.mit.edu",
-        "ischoportal.mit.edu",
-        "atlas.mit.edu",
-        "usi.qualtrics.com",
-        "ec.europa.eu",
-        "precisionconference.com",
-        "new.precisionconference.com",
-        "osf.io",
-        "imotions.com",
-        "dis.ijs.si",
-        "ubicomp.org",
-        "thelancet.com",
-        "en.wikipedia.org",
-        "ijs.si",
-        "search.usi.ch",
-        "journals.sagepub.com",
-        "scholarshipdb.net",
-        "authors.elsevier.com",
-        "timeshighereducation.com"
+      "name": [
+        "Comms",
+        "Email"
       ],
-      "rule": "domain:research"
+      "rule": {
+        "type": "regex",
+        "regex": "olk|Gmail|Outlook|Thunderbird|Apple\\s*Mail|Mail\\.app|mutt|alpine|Evolution|Mailbird|Postbox|Claws\\s*Mail|eM\\s*Client|ProtonMail|Yahoo\\s*Mail|Zoho\\s*Mail|Roundcube|FastMail|Airmail|Horde\\s*Webmail|Zimbra|KMail|Windows\\s*Mail|Outlook\\.exe|outlook\\.live\\.com|mail\\.google\\.com",
+        "ignore_case": true
+      },
+      "id": 13,
+      "data": {}
     },
     {
-      "category": "development",
-      "domains": [
-        "github.com",
-        "gitlab.com",
-        "stackoverflow.com",
-        "stackexchange.com",
-        "jupyter.org",
-        "baeldung.com",
-        "northflank.com"
+      "name": [
+        "Uncategorized"
       ],
-      "rule": "domain:development"
+      "rule": {
+        "type": "none"
+      },
+      "data": {
+        "color": "#CCC"
+      },
+      "id": 14
     },
     {
-      "category": "local_tool",
-      "domains": [
-        "wandb.ai",
-        "localhost",
-        "127.0.0.1"
+      "name": [
+        "Media"
       ],
-      "rule": "domain:local-dev-tool"
+      "rule": {
+        "type": "none"
+      },
+      "id": 15
     },
     {
-      "category": "cloud_infra",
-      "domains": [
-        "aws.amazon.com",
-        "console.aws.amazon.com",
-        "programs.nvidia.com",
-        "ocodatalab.emteqlabs.com",
-        "emteqlabs.com"
+      "name": [
+        "Work",
+        "Office"
       ],
-      "rule": "domain:cloud-infra"
+      "rule": {
+        "type": "regex",
+        "regex": "soffice|XeroxPrintExperience|OneDrive|Notepad|gnome-text-editor|Word|WINWORD|Excel|EXCEL|PowerPoint|POWERPNT|Outlook|Visio|Publisher|LibreOffice|OpenOffice|Writer|Calc|Impress|Draw|Base|Google\\s*Docs|Google\\s*Sheets|Google\\s*Slides|Google\\s*Drive|Docs\\.google\\.com|Sheets\\.google\\.com|Slides\\.google\\.com|Overleaf|TeXstudio|TeXworks|TeXmaker|LyX|MiKTeX|LaTeX|acrobat\\.exe|sharepoint\\.com|okular|presentazione|switch\\ drive|gnome\\-text\\-editor|powerpoint|busycal|numbers|obsidian|online\\ latex\\ editor\\ overleaf|pages|notepad\\.exe|winword\\.exe|calendar|overleaf\\.com|preview|textedit|presentation|translate|keep\\.google\\.com|notion|sharepoint|soffice\\.bin|google\\ docs|excel|drive\\.google\\.com|google\\ sheets|slides|microsoft\\ word|acrobat|assignment|overleaf|switchdrive|\\.pdf|miro|\\.docx|deepl|texshop|dropbox\\.com|google\\ slides|microsoft\\ onenote|microsoft\\ powerpoint|notion\\ calendar|reminders|presentazioni|\\.xlsx|google\\ drive|microsoft\\ excel|excel\\.exe|pdf\\ |docs\\.google\\.com|notes",
+        "ignore_case": true
+      },
+      "id": 16,
+      "data": {}
     },
     {
-      "category": "design_creative",
-      "domains": [
-        "figma.com",
-        "webflow.io",
-        "canva.com",
-        "miro.com"
+      "name": [
+        "Work",
+        "Research & reading"
       ],
-      "rule": "domain:design"
+      "rule": {
+        "type": "regex",
+        "regex": "Evince|okular|Foxit Reader|Sci-Hub|arXiv|PubMed|ResearchGate|IEEE|ieeexplore\\.ieee\\.org|ACM|dl\\.acm\\.org|Springer(Link)?|link\\.springer\\.com|ScienceDirect|sciencedirect\\.com|Nature\\.com|Wiley|onlinelibrary\\.wiley\\.com|Taylor\\s*&\\s*Francis|SAGE|journals\\.sagepub\\.com|JSTOR|PLOS|Frontiers|MDPI|Elsevier|cell\\.com|DOI\\.org|Semantic\\s*Scholar|semanticscholar\\.org|Google\\s*Scholar|scholar\\.google\\.com|Zotero|Mendeley|EndNote|Citavi|JabRef|BibDesk|ReadCube|Paperpile|RefWorks|Acrobat|.pdf|Google U\u010denjak|anna\\ marie\\ kermarrec|osf\\.io|eth\\ zurich|deep\\ learning|ieee|acm\\.org|paper|salt\\-gnn|snsf|dt4h\\.org|thelancet\\.com|mysnf|robots\\.ox\\.ac\\.uk|springer|wiley\\.com|amanote|ischoportal\\.mit\\.edu|pc\\.inf\\.usi\\.ch|imotions\\.com|dictionary|usi|localization|ethz\\.ch|ijs|exercise|privacy\\ and\\ security|infinitygen|springer\\.com|smartchange|journals\\.sagepub\\.com|dl\\.acm\\.org|course\\ registrations|ren\\ yi|cerca\\ con\\ google|google\\ scholar|onlinelibrary|research\\ paper|survey|dataset|ncbi\\.nlm\\.nih\\.gov|mysnf\\.ch|quiz|media\\.mit\\.edu|ramesh\\ raskar|blas_user_guide|neural|ubicomp\\.org|aware|onlinelibrary\\.wiley\\.com|usi\\.qualtrics\\.com|moodle|usi\\.ch|precisionconference\\.com|ieeexplore\\.ieee\\.org|dis\\.ijs\\.si|population_based|atlas\\.mit\\.edu|isca\\-archive\\.org|citi\\ course|inf\\.usi\\.ch|traditional\\ ml|researchgate\\.net|scholar\\.google|researchgate|security\\ and\\ privacy|zotero|citi\\ \\-\\ collaborative|wiley|main_correct|people\\-centered\\ computing|phd\\ programme|models|frontiersin\\.org|lecture|causal\\ inference|ieee\\.org|datasets|traditional_ml|jsi|gnnexplainer|ec\\.europa\\.eu|machine\\ learning|authors\\.elsevier\\.com|research|computer\\ architecture|mit\\.edu|research\\.google|openreview\\.net|search\\.usi\\.ch|scholarshipdb\\.net|uni\\-lj\\.si|train_|aaai\\.org|ijs\\.si|sensorlm|session|new\\.precisionconference\\.com|sheet|model|timeshighereducation\\.com|snf\\.ch|scholargps\\.com|nature\\.com|cogload|arxiv|arxiv\\.org|link\\.springer\\.com|conference\\ template|course|federated\\ learning|federated|ukri\\.org|fairlearn\\.org|conference\\ ranks|funding|causalcgm|optuna|universum|physionet|icorsi|course:|scholar\\.google\\.com|en\\.wikipedia\\.org|\\[2310\\.|acm|slurm|zenodo|liquid\\.ai|universita\\ della\\ svizzera\\ italiana",
+        "ignore_case": true
+      },
+      "id": 17,
+      "data": {}
     },
     {
-      "category": "media",
-      "domains": [
-        "youtube.com",
-        "spotify.com",
-        "netflix.com",
-        "photos.google.com",
-        "time.mk",
-        "swissinfo.ch"
+      "name": [
+        "System"
       ],
-      "rule": "domain:media"
+      "rule": {
+        "type": "regex",
+        "regex": "parsecd|setup|NVIDIA|mintty.exe|Apport-gtk|Snap-store|Gcr-viewer|gnome-control-center|taskmgr|mmc|mstsc|sys|property|settings|control\\.exe|perfmon|services\\.msc|regedit|resource\\s*monitor|systemproperties|windowsupdate|defender|eventvwr|diskmgmt|devmgmt|gpedit|netplwiz|Terminal|terminal|explorer|cloudnotifications\\.exe|logi\\ options\\+|cisco\\ secure\\ client|app\\ store|unknown|1password\\ 7|1password|stats|system\\ information|teamviewer|anyconnect|print\\ center|stream\\ deck|shellexperiencehost\\.exe|searchhost\\.exe|gnome\\-control\\-center|avgui\\.exe|mstsc\\.exe|forklift|finder|onedrive\\.exe|activity\\ monitor|microsoft\\ remote\\ desktop|globalprotect|system\\ settings|nordvpn|program\\ manager|gjs|numi|nordpass|org\\.gnome\\.nautilus|applicationframehost\\.exe|archive\\ utility|explorer\\.exe|automator|pickerhost\\.exe|onedrive|unzip\\ \\-\\ rar\\ zip\\ 7z\\ unarchiver|usi\\.xurrent\\.com|calculator|print\\ centre",
+        "ignore_case": true
+      },
+      "id": 18,
+      "data": {
+        "color": "#FA28FF"
+      }
     },
     {
-      "category": "social_distraction",
-      "domains": [
-        "facebook.com",
-        "fbcdn.net",
-        "instagram.com",
-        "reddit.com",
-        "x.com",
-        "twitter.com",
-        "linkedin.com",
-        "discord.com"
+      "name": [
+        "Work",
+        "Browser"
       ],
-      "rule": "domain:social"
+      "rule": {
+        "type": "regex",
+        "regex": "chrome|msedge|firefox|safari|brave|vivaldi",
+        "ignore_case": true
+      },
+      "id": 19,
+      "data": {}
     },
     {
-      "category": "game_distraction",
-      "domains": [
-        "shellshock.io",
-        "deathegg.world",
-        "krunker.io",
-        "tetris.com",
-        "poki.com"
+      "name": [
+        "AFK"
       ],
-      "rule": "domain:game"
+      "rule": {
+        "type": "regex",
+        "regex": "LockApp|Windows Default Lock Screen"
+      },
+      "id": 20,
+      "data": {}
     },
     {
-      "category": "finance_admin",
-      "domains": [
-        "postfinance.ch",
-        "kb.mk",
-        "pbz.hr",
-        "online.kb.mk",
-        "iherb.com",
-        "e-uprava.gov.si",
-        "oss.uredjenazemlja.hr"
+      "name": [
+        "System",
+        "Background"
       ],
-      "rule": "domain:finance-admin"
-    },
-    {
-      "category": "travel_logistics",
-      "domains": [
-        "britishairways.com",
-        "iberia.com",
-        "momondo.com",
-        "thetrainline.com",
-        "doodle.com",
-        "evinjeta.dars.si"
-      ],
-      "rule": "domain:travel"
-    },
-    {
-      "category": "personal_distraction",
-      "domains": [
-        "njuskalo.hr",
-        "lidl.com",
-        "primerjam.si"
-      ],
-      "rule": "domain:personal-distraction"
-    },
-    {
-      "category": "system_admin",
-      "domains": [
-        "usi.xurrent.com"
-      ],
-      "rule": "domain:system-admin"
+      "rule": {
+        "type": "regex",
+        "regex": "conhost|MusNotificationUx|SearchApp|AVGUI|dwm|WidgetBoard|pcaui|OpenWit|CloudNotifications|ApplicationFrameHost|Update-notifier|Gjs|Update-manager|StartMenuExperienceHost.exe|SearchHost.exe|PickerHost.exe|ShellExperienceHost.exe|org.gnome.Nautilus"
+      },
+      "id": 21,
+      "data": {}
     }
   ]
 }

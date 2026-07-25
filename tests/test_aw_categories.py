@@ -1,21 +1,9 @@
 from trustme_xai.feature_pipeline.activity_categories import (
-    CATEGORY_ALIASES,
+    categorize_web_event,
+    categorize_window_event,
     normalize_domain,
-    result,
     unified_categories,
 )
-
-EXPECTED_ALIASES = {
-    "cloud_infra": "development",
-    "data_analysis": "development",
-    "design_creative": "writing",
-    "finance_admin": "personal_distraction",
-    "local_tool": "development",
-    "other_app": "other",
-    "search": "other",
-    "social_distraction": "personal_distraction",
-    "travel_logistics": "personal_distraction",
-}
 
 EXPECTED_CATEGORIES = [
     "ai_assistant",
@@ -35,10 +23,15 @@ EXPECTED_CATEGORIES = [
 ]
 
 
-def test_category_aliases_are_always_applied() -> None:
-    assert CATEGORY_ALIASES == EXPECTED_ALIASES
-    for category, expected in EXPECTED_ALIASES.items():
-        assert result(category, "high", "test").category == expected
+def test_jsi_categorize_window_event() -> None:
+    res = categorize_window_event("Code", "test.py - Visual Studio Code")
+    assert res.category == "development"
+
+
+def test_jsi_categorize_web_event() -> None:
+    res = categorize_web_event("https://github.com/my-repo", "GitHub")
+    assert res.category == "development"
+    assert res.normalized_domain == "github.com"
 
 
 def test_unified_categories_are_the_canonical_categories() -> None:

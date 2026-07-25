@@ -1,9 +1,7 @@
-"""Categorize activitywatch events"""
+"""Categorize activitywatch events with taxonomy rules"""
 
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict, cast
@@ -20,25 +18,25 @@ HIDDEN_TEXT_MARKS = {
 RULES_PATH = Path(__file__).with_name("category_rules.json")
 
 
-class DomainRule(TypedDict):
-    category: str
-    rule: str
-    domains: list[str]
+class TaxonomyRule(TypedDict, total=False):
+    """Store one raw match rule"""
+
+    type: str
+    regex: str
+    ignore_case: bool
 
 
-class TitleRule(TypedDict):
-    category: str
-    rule: str
-    contains: list[str]
+class TaxonomyCategory(TypedDict):
+    """Store one raw category"""
+
+    name: list[str]
+    rule: TaxonomyRule
 
 
-class CategoryRules(TypedDict):
-    categories: list[str]
-    category_aliases: dict[str, str]
-    browser_apps: list[str]
-    app_exact_rules: dict[str, list[str]]
-    web_domain_rules: list[DomainRule]
-    title_rules: list[TitleRule]
+class Taxonomy(TypedDict):
+    """Store the raw taxonomy"""
+
+    categories: list[TaxonomyCategory]
 
 
 @dataclass(frozen=True)
@@ -46,32 +44,75 @@ class CategoryResult:
     """Store one category result"""
 
     category: str
-    confidence: str
-    rule: str
+    confidence: str = "high"
+    rule: str = ""
     normalized_domain: str = ""
 
 
-def load_rules(path: Path = RULES_PATH) -> CategoryRules:
-    """Load category rules from json
+@dataclass(frozen=True)
+class _CompiledCategory:
+    category: str
+    depth: int
+    pattern: re.Pattern[str] | None
+
+
+TAXONOMY_TO_LEGACY_CATEGORY: dict[str, str] = {
+    "work_meetings": "meetings",
+    "work_ai_assistant": "ai_assistant",
+    "work": "other",
+    "work_programming": "development",
+    "work_programming_activitywatch": "development",
+    "work_image": "writing",
+    "work_video": "media",
+    "work_audio": "media",
+    "work_3d": "writing",
+    "media_games": "game_distraction",
+    "media_video": "media",
+    "media_social_media": "personal_distraction",
+    "media_music": "media",
+    "comms": "communication",
+    "comms_im": "communication",
+    "comms_email": "communication",
+    "uncategorized": "other",
+    "media": "media",
+    "work_office": "writing",
+    "work_research_and_reading": "research",
+    "system": "system_admin",
+    "work_browser": "browser_uncategorized",
+    "afk": "other",
+    "system_background": "system_admin",
+}
+
+LEGACY_CATEGORIES = [
+    "ai_assistant",
+    "browser_uncategorized",
+    "calendar_tasks",
+    "communication",
+    "development",
+    "file_management",
+    "game_distraction",
+    "media",
+    "meetings",
+    "other",
+    "personal_distraction",
+    "research",
+    "system_admin",
+    "writing",
+]
+
+
+def load_rules(path: Path = RULES_PATH) -> Taxonomy:
+    """Load the taxonomy from json
 
     Args:
-        path: path to the category rule file
+        path: path to the category rules file
 
     Returns:
-        CategoryRules loaded from json
+        Taxonomy loaded from json
     """
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    return cast(CategoryRules, raw)
-
-
-RULES = load_rules()
-CATEGORIES = RULES["categories"]
-CATEGORY_ALIASES = RULES["category_aliases"]
-BROWSER_APP_KEYS = {browser.casefold() for browser in RULES["browser_apps"]}
-APP_EXACT_RULES = RULES["app_exact_rules"]
-WEB_DOMAIN_RULES = RULES["web_domain_rules"]
-TITLE_RULES = RULES["title_rules"]
+    return cast(Taxonomy, raw)
 
 
 def normalize_text(value: object) -> str:
@@ -138,54 +179,48 @@ def normalize_domain(raw_string: object) -> str:
     return ""
 
 
-def contains_any(text: str, needles: list[str] | tuple[str, ...]) -> bool:
-    """Check whether text contains any given value
+def category_slug(path: list[str]) -> str:
+    """Convert one category path to a feature-safe name
 
     Args:
-        text: text to search
-        needles: values to find
+        path: ordered category path
 
     Returns:
-        whether any value appears in the text
+        lowercase snake category name
     """
 
-    return any(needle in text for needle in needles)
+    text = "_".join(path).casefold().replace("&", " and ")
+    return re.sub(r"[^a-z0-9]+", "_", text).strip("_")
 
 
-def domain_matches(domain: str, domains: list[str]) -> bool:
-    """Match a domain or subdomain
+def _compile_categories(taxonomy: Taxonomy) -> tuple[_CompiledCategory, ...]:
+    compiled: list[_CompiledCategory] = []
+    for item in taxonomy["categories"]:
+        raw_rule = item["rule"]
+        raw_regex = raw_rule.get("regex", "")
+        pattern: re.Pattern[str] | None = None
+        if raw_rule.get("type") == "regex" and raw_regex:
+            flags = re.IGNORECASE if raw_rule.get("ignore_case", False) else 0
+            pattern = re.compile(raw_regex, flags)
+        compiled.append(
+            _CompiledCategory(
+                category=category_slug(item["name"]),
+                depth=len(item["name"]),
+                pattern=pattern,
+            ),
+        )
+    return tuple(compiled)
 
-    Args:
-        domain: domain to check
-        domains: accepted domains
 
-    Returns:
-        whether the domain matches
-    """
-
-    return any(domain == item or domain.endswith(f".{item}") for item in domains)
-
-
-def match_title_rule(text: str) -> TitleRule | None:
-    """Find the first matching title rule
-
-    Args:
-        text: normalized title text
-
-    Returns:
-        matching TitleRule or None
-    """
-
-    for title_rule in TITLE_RULES:
-        if contains_any(text, title_rule["contains"]):
-            return title_rule
-    return None
+RULES = load_rules()
+COMPILED_CATEGORIES = _compile_categories(RULES)
+CATEGORIES = LEGACY_CATEGORIES
 
 
 def result(
     category: str,
-    confidence: str,
-    rule: str,
+    confidence: str = "high",
+    rule: str = "",
     domain: str = "",
 ) -> CategoryResult:
     """Build one category result
@@ -197,15 +232,27 @@ def result(
         domain: normalized domain
 
     Returns:
-        CategoryResult with category aliases applied
+        CategoryResult for event tables
     """
 
+    mapped = TAXONOMY_TO_LEGACY_CATEGORY.get(category, category)
     return CategoryResult(
-        category=CATEGORY_ALIASES.get(category, category),
+        category=mapped,
         confidence=confidence,
         rule=rule,
         normalized_domain=domain,
     )
+
+
+def _match_category(values: tuple[object, ...]) -> str:
+    text = "\n".join(normalize_text(value) for value in values)
+    best: _CompiledCategory | None = None
+    for item in COMPILED_CATEGORIES:
+        if item.pattern is None or item.pattern.search(text) is None:
+            continue
+        if best is None or item.depth > best.depth:
+            best = item
+    return "uncategorized" if best is None else best.category
 
 
 def unified_categories() -> list[str]:
@@ -234,58 +281,9 @@ def categorize_window_event(
         CategoryResult for the window event
     """
 
-    app_norm = normalize_text(app) or "unknown"
-    app_l = app_norm.casefold()
-    title_l = text_key(title)
     domain = normalize_domain(url)
-
-    if domain:
-        web_result = categorize_web_event(url, title)
-        category = (
-            web_result.category
-            if web_result.category != "other"
-            else "browser_uncategorized"
-        )
-        return CategoryResult(
-            category=category,
-            confidence="high" if web_result.category != "other" else "medium",
-            rule=web_result.rule,
-            normalized_domain=web_result.normalized_domain,
-        )
-
-    if app_l in APP_EXACT_RULES:
-        category, rule = APP_EXACT_RULES[app_l]
-        return result(category, "high", rule)
-
-    if app_l in BROWSER_APP_KEYS:
-        title_rule = match_title_rule(title_l)
-        if title_rule is not None:
-            return result(
-                title_rule["category"],
-                "medium",
-                title_rule["rule"],
-            )
-        if not title_l or title_l in {"new tab", "start page"}:
-            return result(
-                "browser_uncategorized",
-                "low",
-                "browser:no-title",
-            )
-        return result(
-            "browser_uncategorized",
-            "low",
-            "browser:unknown-title",
-        )
-
-    title_rule = match_title_rule(title_l)
-    if title_rule is not None:
-        return result(
-            title_rule["category"],
-            "medium",
-            title_rule["rule"],
-        )
-
-    return result("other_app", "low", "app:unmapped")
+    raw_cat = _match_category((app, title, url))
+    return result(category=raw_cat, confidence="high", rule="", domain=domain)
 
 
 def categorize_web_event(url: object, title: object = "") -> CategoryResult:
@@ -300,46 +298,5 @@ def categorize_web_event(url: object, title: object = "") -> CategoryResult:
     """
 
     domain = normalize_domain(url)
-    title_l = text_key(title)
-
-    if not domain:
-        return result("other", "low", "web:missing-domain")
-    if domain in {"newtab", "chrome", "about"}:
-        return result(
-            "browser_uncategorized",
-            "low",
-            "domain:browser-internal",
-            domain=domain,
-        )
-    if domain in {"localhost", "127.0.0.1"} or domain.startswith("127."):
-        return result("local_tool", "high", "domain:local-dev-tool", domain)
-
-    for domain_rule in WEB_DOMAIN_RULES:
-        if domain_matches(domain, domain_rule["domains"]):
-            return result(
-                domain_rule["category"],
-                "high",
-                domain_rule["rule"],
-                domain=domain,
-            )
-
-    title_rule = match_title_rule(title_l)
-    if title_rule is not None:
-        return result(
-            title_rule["category"],
-            "medium",
-            title_rule["rule"],
-            domain,
-        )
-
-    if domain.startswith("google.") or domain == "google.com":
-        if contains_any(title_l, ("search", "google search")):
-            return result(
-                "search",
-                "high",
-                "domain:title:google-search",
-                domain,
-            )
-        return result("search", "medium", "domain:google-general", domain)
-
-    return result("other", "low", "domain:unmapped", domain)
+    raw_cat = _match_category((title, url))
+    return result(category=raw_cat, confidence="high", rule="", domain=domain)

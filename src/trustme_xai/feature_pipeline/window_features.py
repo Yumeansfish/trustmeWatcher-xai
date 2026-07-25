@@ -117,8 +117,12 @@ def choose_event_slices(
             continue
 
         source = str(getattr(row, "source_type", "window"))
-        confidence = str(getattr(row, "category_confidence", "unknown"))
-        priority = 2 if source == "web" else 1 if confidence == "high" else 0
+        if source == "afk":
+            priority = 2
+        elif source == "web":
+            priority = 1
+        else:
+            priority = 0
         slices.append(
             EventSlice(
                 start=clip_start,
