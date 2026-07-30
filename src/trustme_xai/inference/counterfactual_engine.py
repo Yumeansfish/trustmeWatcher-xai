@@ -13,8 +13,13 @@ from trustme_xai.inference.counterfactual_constraints import (
 )
 from trustme_xai.inference.ensemble_bundle import EnsembleBundle, TargetMetric
 
-# Priority order for donor (source) categories to cut time from
 DONOR_PRIORITY: tuple[str, ...] = (
+    "minutes_media_social_media",
+    "minutes_media_games",
+    "minutes_media_video",
+    "minutes_comms_im",
+    "minutes_comms_email",
+    "minutes_uncategorized",
     "time_personal_distraction",
     "time_media",
     "time_communication",
@@ -23,8 +28,11 @@ DONOR_PRIORITY: tuple[str, ...] = (
     "time_development",
 )
 
-# Priority order for receiver (target) categories to add time to
 RECEIVER_PRIORITY: tuple[str, ...] = (
+    "minutes_work_programming",
+    "minutes_work_research_and_reading",
+    "minutes_work_office",
+    "minutes_work",
     "time_development",
     "time_writing",
     "time_research",
@@ -33,7 +41,7 @@ RECEIVER_PRIORITY: tuple[str, ...] = (
     "time_personal_distraction",
 )
 
-STEP_SIZE_MINUTES: float = 15.0
+STEP_SIZE_MINUTES: float = 5.0
 MAX_SHIFTS: int = 3
 
 
@@ -57,27 +65,21 @@ def find_counterfactual(
     """
     if len(feature_row) != 1:
         raise ValueError(f"feature_row must contain exactly 1 row, got {len(feature_row)}")
-
-    if "user_id" not in feature_row.columns or "timestamp" not in feature_row.columns:
+    if not {"user_id", "timestamp"}.issubset(feature_row.columns):
         raise ValueError("feature_row must contain user_id and timestamp columns")
 
     metric_key = TargetMetric(target)
     baseline_pred = float(bundle.predict_target(feature_row, metric_key))
 
     row_data = feature_row.iloc[0].to_dict()
-    participant_id = str(row_data["user_id"])
-    prediction_timestamp = pd.Timestamp(row_data["timestamp"]).isoformat()
-
-    # Targets like stress or fatigue are negative (lower is better)
-    is_negative_target = metric_key in (TargetMetric.STRESS, TargetMetric.FATIGUE)
-    is_satisfied = (
-        baseline_pred <= desired_score if is_negative_target else baseline_pred >= desired_score
-    )
+    participant_id, ts_str = str(row_data["user_id"]), pd.Timestamp(row_data["timestamp"]).isoformat()
+    is_neg = metric_key in (TargetMetric.STRESS, TargetMetric.FATIGUE)
+    is_satisfied = baseline_pred <= desired_score if is_neg else baseline_pred >= desired_score
 
     if is_satisfied:
         return {
             "participant_id": participant_id,
-            "prediction_timestamp": prediction_timestamp,
+            "prediction_timestamp": ts_str,
             "target": str(metric_key),
             "predicted_score": round(baseline_pred, 4),
             "desired_score": round(float(desired_score), 4),
@@ -85,116 +87,57 @@ def find_counterfactual(
             "shifts": [],
         }
 
-    # Prepare working copy of feature row dictionary
-    current_features = dict(row_data)
-    shifts: list[dict[str, Any]] = []
-
-    # Filter candidate donors with non-zero available minutes
-    candidate_donors = [
-        c for c in DONOR_PRIORITY if float(current_features.get(c, 0.0)) >= STEP_SIZE_MINUTES
+    current, deltas_acc = dict(row_data), {}
+    donors = [c for c in DONOR_PRIORITY if float(current.get(c, 0.0)) >= STEP_SIZE_MINUTES] or [
+        c for c in ACTIONABLE_CATEGORIES if float(current.get(c, 0.0)) >= STEP_SIZE_MINUTES
     ]
-    # Filter candidate receivers different from donor
-    candidate_receivers = list(RECEIVER_PRIORITY)
+    best_pred, found_solution = baseline_pred, False
 
-    best_features = dict(current_features)
-    best_pred = baseline_pred
-    found_solution = False
-
-    for step in range(MAX_SHIFTS):
+    for _ in range(MAX_SHIFTS):
         if found_solution:
             break
+        improved = False
 
-        step_improved = False
-        for donor in candidate_donors:
-            donor_val = float(current_features.get(donor, 0.0))
-            if donor_val < STEP_SIZE_MINUTES:
+        for donor in donors:
+            if float(current.get(donor, 0.0)) < STEP_SIZE_MINUTES:
                 continue
 
-            for receiver in candidate_receivers:
-                if receiver == donor:
+            for receiver in RECEIVER_PRIORITY:
+                if receiver == donor or not check_time_budget(current, {donor: -STEP_SIZE_MINUTES, receiver: STEP_SIZE_MINUTES}):
                     continue
 
-                proposed_deltas = {donor: -STEP_SIZE_MINUTES, receiver: STEP_SIZE_MINUTES}
-                if not check_time_budget(current_features, proposed_deltas):
-                    continue
+                cand = dict(current)
+                cand[donor] -= STEP_SIZE_MINUTES
+                cand[receiver] = float(cand.get(receiver, 0.0)) + STEP_SIZE_MINUTES
+                validate_counterfactual(row_data, cand)
 
-                # Apply proposed zero-sum swap
-                candidate_features = dict(current_features)
-                candidate_features[donor] = donor_val - STEP_SIZE_MINUTES
-                candidate_features[receiver] = float(candidate_features.get(receiver, 0.0)) + STEP_SIZE_MINUTES
-
-                # Recompute derived focus metrics
-                total_active = sum(float(candidate_features.get(c, 0.0)) for c in ACTIONABLE_CATEGORIES)
-                candidate_features["mean_focus_block_minutes"] = round(total_active / max(1, len(ACTIONABLE_CATEGORIES)), 2)
-
-                # Validate physical invariants
-                validate_counterfactual(row_data, candidate_features)
-
-                # Evaluate candidate prediction against ensemble model
-                cand_df = pd.DataFrame([candidate_features])
-                cand_pred = float(bundle.predict_target(cand_df, metric_key))
-
-                # Check if this swap moves prediction in the right direction
-                is_better = (
-                    cand_pred < best_pred if is_negative_target else cand_pred > best_pred
-                )
+                cand_pred = float(bundle.predict_target(pd.DataFrame([cand]), metric_key))
+                is_better = cand_pred < best_pred if is_neg else cand_pred > best_pred
 
                 if is_better:
-                    best_pred = cand_pred
-                    best_features = candidate_features
-                    current_features = candidate_features
-                    shifts.append(
-                        {
-                            "category": donor,
-                            "time_spent": float(row_data.get(donor, 0.0)),
-                            "delta_minutes": -STEP_SIZE_MINUTES,
-                        },
-                    )
-                    shifts.append(
-                        {
-                            "category": receiver,
-                            "time_spent": float(row_data.get(receiver, 0.0)),
-                            "delta_minutes": STEP_SIZE_MINUTES,
-                        },
-                    )
-                    step_improved = True
-                    is_achieved = (
-                        cand_pred <= desired_score if is_negative_target else cand_pred >= desired_score
-                    )
-                    if is_achieved:
-                        found_solution = True
+                    best_pred, current = cand_pred, cand
+                    deltas_acc[donor] = deltas_acc.get(donor, 0.0) - STEP_SIZE_MINUTES
+                    deltas_acc[receiver] = deltas_acc.get(receiver, 0.0) + STEP_SIZE_MINUTES
+                    improved = True
+                    found_solution = cand_pred <= desired_score if is_neg else cand_pred >= desired_score
                     break
-
-            if step_improved:
+            if improved:
                 break
-
-        if not step_improved:
+        if not improved:
             break
 
-    # Format final merged shifts dictionary (combining deltas per category)
-    merged_shifts_dict: dict[str, dict[str, Any]] = {}
-    for shift in shifts:
-        cat = shift["category"]
-        if cat not in merged_shifts_dict:
-            merged_shifts_dict[cat] = {
-                "category": cat,
-                "time_spent": float(row_data.get(cat, 0.0)),
-                "delta_minutes": 0.0,
-            }
-        merged_shifts_dict[cat]["delta_minutes"] += shift["delta_minutes"]
-
-    final_shifts = [
-        val for val in merged_shifts_dict.values() if abs(val["delta_minutes"]) > 1e-4
+    shifts = [
+        {"category": cat, "time_spent": float(row_data.get(cat, 0.0)), "delta_minutes": delta}
+        for cat, delta in deltas_acc.items()
+        if abs(delta) > 1e-4
     ]
 
     return {
         "participant_id": participant_id,
-        "prediction_timestamp": prediction_timestamp,
+        "prediction_timestamp": ts_str,
         "target": str(metric_key),
         "predicted_score": round(baseline_pred, 4),
         "desired_score": round(float(desired_score), 4),
-        "success": found_solution or (
-            best_pred <= desired_score if is_negative_target else best_pred >= desired_score
-        ),
-        "shifts": final_shifts,
+        "success": found_solution or (best_pred <= desired_score if is_neg else best_pred >= desired_score),
+        "shifts": shifts,
     }

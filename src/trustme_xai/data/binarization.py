@@ -6,7 +6,7 @@ import pandas as pd
 
 HARD_THRESHOLD = 3.0
 
-_TARGET_CANDIDATES = [
+_TARGET_CANDIDATES = (
     "stress",
     "fatigue",
     "valence",
@@ -14,11 +14,18 @@ _TARGET_CANDIDATES = [
     "productivity",
     "engagement",
     "overall_wellbeing",
-]
+)
 
 
 def _detect_targets(df: pd.DataFrame) -> list[str]:
-    """Find target columns present in the input table"""
+    """Find target columns present in input table
+
+    Args:
+        df: input pd.DataFrame
+
+    Returns:
+        list of target column names
+    """
     return [col for col in _TARGET_CANDIDATES if col in df.columns]
 
 
@@ -38,19 +45,19 @@ def compute_user_medians(train_df: pd.DataFrame) -> pd.DataFrame:
     if not targets:
         raise ValueError("train_df must contain at least one valid target column")
 
-    records: list[dict[str, str | float]] = []
-    for user_id, user_rows in train_df.groupby("user_id", sort=True):
-        for target in targets:
-            median_val = float(user_rows[target].median())
-            records.append(
-                {
-                    "user_id": str(user_id),
-                    "target": target,
-                    "median": median_val,
-                },
-            )
-
-    return pd.DataFrame(records, columns=["user_id", "target", "median"])
+    melted = train_df.melt(
+        id_vars=["user_id"],
+        value_vars=targets,
+        var_name="target",
+        value_name="score",
+    )
+    res = (
+        melted.groupby(["user_id", "target"], as_index=False)["score"]
+        .median()
+        .rename(columns={"score": "median"})
+    )
+    res["user_id"] = res["user_id"].astype(str)
+    return res
 
 
 def binarize_targets(
@@ -58,9 +65,6 @@ def binarize_targets(
     medians_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Add binary label columns using hard 3.0 and per-user median thresholds
-
-    Adds target_bin_hard (1 if score >= 3.0, else 0) and target_bin_median
-    (1 if score >= user median, else 0).
 
     Args:
         df: target pd.DataFrame containing user_id and target columns
@@ -72,44 +76,30 @@ def binarize_targets(
     if "user_id" not in df.columns:
         raise ValueError("df must contain user_id column")
 
-    required_medians_cols = {"user_id", "target", "median"}
-    if not required_medians_cols.issubset(medians_df.columns):
-        raise ValueError(
-            f"medians_df must contain columns: {sorted(required_medians_cols)}",
-        )
+    required = {"user_id", "target", "median"}
+    if not required.issubset(medians_df.columns):
+        raise ValueError(f"medians_df must contain columns: {sorted(required)}")
 
     targets = _detect_targets(df)
     if not targets:
         raise ValueError("df must contain at least one valid target column")
 
-    result = df.copy()
-
-    # Calculate global target medians as fallbacks for new users
-    global_medians = {
-        target: float(medians_df.loc[medians_df["target"] == target, "median"].median())
-        if not medians_df.loc[medians_df["target"] == target].empty
-        else HARD_THRESHOLD
-        for target in targets
-    }
-
-    # Map per-user medians into lookup dictionary
-    user_medians: dict[tuple[str, str], float] = {
+    res = df.copy()
+    user_map = {
         (str(row["user_id"]), str(row["target"])): float(row["median"])
         for _, row in medians_df.iterrows()
     }
+    glob_map = {
+        t: float(medians_df.loc[medians_df["target"] == t, "median"].median())
+        if not medians_df.loc[medians_df["target"] == t].empty
+        else HARD_THRESHOLD
+        for t in targets
+    }
 
-    for target in targets:
-        scores = result[target].to_numpy()
+    for t in targets:
+        scores = res[t].to_numpy()
+        res[f"{t}_bin_hard"] = (scores >= HARD_THRESHOLD).astype(int)
+        meds = [user_map.get((str(u), t), glob_map[t]) for u in res["user_id"]]
+        res[f"{t}_bin_median"] = (scores >= meds).astype(int)
 
-        # Hard threshold binarization (>= 3.0)
-        result[f"{target}_bin_hard"] = (scores >= HARD_THRESHOLD).astype(int)
-
-        # Participant median threshold binarization
-        medians = [
-            user_medians.get((str(uid), target), global_medians[target])
-            for uid in result["user_id"]
-        ]
-
-        result[f"{target}_bin_median"] = (scores >= medians).astype(int)
-
-    return result
+    return res

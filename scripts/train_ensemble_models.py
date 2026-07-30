@@ -106,12 +106,16 @@ def evaluate_candidate(
     Returns:
         CandidateEvaluation containing family, avg_val_mse, and 5 block models
     """
+    clean_df = df.dropna(subset=[target, *feature_columns]).copy().reset_index(drop=True)
     block_models: list[RegressorMixin] = []
     val_mses: list[float] = []
 
-    for train_idx, val_idx in split_purged_blocks(df):
-        train_block = df.iloc[train_idx]
-        val_block = df.iloc[val_idx]
+    for train_idx, val_idx in split_purged_blocks(clean_df):
+        if len(train_idx) == 0 or len(val_idx) == 0:
+            continue
+
+        train_block = clean_df.iloc[train_idx]
+        val_block = clean_df.iloc[val_idx]
 
         fitted_model, val_mse = fit_and_score_block(
             family,
@@ -183,11 +187,12 @@ def train_dashboard_models(
         winner = min(evaluations, key=lambda e: e.avg_val_mse)
 
         # Compute per-user means and global fallback mean for baseline modeling
+        clean_target_df = df.dropna(subset=[target])
         user_means = {
             str(uid): float(rows[target].mean())
-            for uid, rows in df.groupby("user_id", sort=True)
+            for uid, rows in clean_target_df.groupby("user_id", sort=True)
         }
-        global_mean = float(df[target].mean())
+        global_mean = float(clean_target_df[target].mean())
 
         target_models[target] = EnsembleTargetModel(
             target=target,

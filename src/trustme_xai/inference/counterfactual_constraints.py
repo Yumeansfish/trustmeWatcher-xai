@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-import numpy as np
-import pandas as pd
-
 IMMUTABLE_FEATURES: frozenset[str] = frozenset(
     {
         "timestamp",
@@ -20,6 +17,16 @@ IMMUTABLE_FEATURES: frozenset[str] = frozenset(
 )
 
 ACTIONABLE_CATEGORIES: tuple[str, ...] = (
+    "minutes_media_social_media",
+    "minutes_media_games",
+    "minutes_media_video",
+    "minutes_comms_im",
+    "minutes_comms_email",
+    "minutes_uncategorized",
+    "minutes_work",
+    "minutes_work_programming",
+    "minutes_work_office",
+    "minutes_work_research_and_reading",
     "time_development",
     "time_writing",
     "time_communication",
@@ -43,7 +50,7 @@ def is_immutable(feature_name: str) -> bool:
     """Check if feature is immutable
 
     Args:
-        feature_name: name of the feature column
+        feature_name: name of feature column
 
     Returns:
         True if feature is immutable
@@ -64,33 +71,25 @@ def check_time_budget(
     Returns:
         True if all physical constraints are satisfied
     """
-    # 1. Zero-Sum Conservation Invariant: sum(deltas) == 0
-    total_delta = sum(proposed_deltas.values())
-    if abs(total_delta) > TOLERANCE:
+    if abs(sum(proposed_deltas.values())) > TOLERANCE:
         return False
 
-    # 2. Non-negativity & window capacity invariants
     new_active_sum = 0.0
     for cat in ACTIONABLE_CATEGORIES:
-        baseline = float(feature_row.get(cat, 0.0))
-        delta = float(proposed_deltas.get(cat, 0.0))
-        new_val = baseline + delta
+        new_val = float(feature_row.get(cat, 0.0)) + float(proposed_deltas.get(cat, 0.0))
         if new_val < -TOLERANCE:
             return False
         new_active_sum += new_val
 
-    afk_minutes = float(feature_row.get("afk_minutes", 0.0))
-    if new_active_sum > (WINDOW_TIME_BUDGET - afk_minutes + TOLERANCE):
-        return False
-
-    return True
+    afk = float(feature_row.get("minutes_afk", feature_row.get("afk_minutes", 0.0)))
+    return new_active_sum <= (WINDOW_TIME_BUDGET - afk + TOLERANCE)
 
 
 def validate_counterfactual(
     original_row: Mapping[str, Any],
     modified_row: Mapping[str, Any],
 ) -> None:
-    """Fail-fast guard clause validating all physical invariants between original and counterfactual
+    """Fail-fast guard clause validating physical invariants between original and counterfactual
 
     Args:
         original_row: baseline feature mapping
@@ -99,28 +98,21 @@ def validate_counterfactual(
     Raises:
         ValueError: if any physical invariant is violated
     """
-    # Immutable feature invariant: deltas for immutable features must be 0
-    for feature in IMMUTABLE_FEATURES:
-        if feature in original_row and feature in modified_row:
-            if original_row[feature] != modified_row[feature]:
-                raise ValueError(f"immutable feature modified: {feature}")
+    for f in IMMUTABLE_FEATURES:
+        if f in original_row and f in modified_row and original_row[f] != modified_row[f]:
+            raise ValueError(f"immutable feature modified: {f}")
 
-    # Zero-sum conservation invariant
     deltas = {
         cat: float(modified_row.get(cat, 0.0)) - float(original_row.get(cat, 0.0))
         for cat in ACTIONABLE_CATEGORIES
     }
-    total_delta = sum(deltas.values())
-    if abs(total_delta) > TOLERANCE:
-        raise ValueError(f"zero-sum conservation invariant violated: sum(delta) = {total_delta}")
+    if abs(sum(deltas.values())) > TOLERANCE:
+        raise ValueError(f"zero-sum conservation invariant violated: sum(delta) = {sum(deltas.values())}")
 
-    # Non-negativity invariant
     for cat in ACTIONABLE_CATEGORIES:
-        val = float(modified_row.get(cat, 0.0))
-        if val < -TOLERANCE:
-            raise ValueError(f"non-negativity invariant violated for category {cat}: {val}")
+        if float(modified_row.get(cat, 0.0)) < -TOLERANCE:
+            raise ValueError(f"non-negativity invariant violated for category {cat}")
 
-    # Time budget upper bound invariant
-    active_total = sum(float(modified_row.get(cat, 0.0)) for cat in ACTIONABLE_CATEGORIES)
-    if active_total > WINDOW_TIME_BUDGET + TOLERANCE:
-        raise ValueError(f"time budget upper bound invariant violated: {active_total} > 60.0")
+    active = sum(float(modified_row.get(cat, 0.0)) for cat in ACTIONABLE_CATEGORIES)
+    if active > WINDOW_TIME_BUDGET + TOLERANCE:
+        raise ValueError(f"time budget upper bound invariant violated: {active} > 60.0")
