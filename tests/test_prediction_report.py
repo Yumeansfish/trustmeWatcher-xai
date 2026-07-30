@@ -1,98 +1,121 @@
-"""Test the dashboard prediction report"""
+"""Tests for live PredictionReport serving and run_inference service"""
 
 from __future__ import annotations
+
+from datetime import datetime
 
 import pandas as pd
 import pytest
 
-from trustme_xai.contracts import QUESTION_IDS, TARGET_COLUMNS
-from trustme_xai.feature_pipeline.production_features import PRODUCTION_FEATURE_SET
-from trustme_xai.inference.model_runtime import (
-    CURRENT_MODEL_SHA256,
-    ModelBundle,
-    TargetModel,
-)
-from trustme_xai.inference.prediction_report import build_prediction_report
+from scripts.train_ensemble_models import train_dashboard_models
+from trustme_xai.inference.inference_service import run_inference
+from trustme_xai.inference.prediction_report import create_prediction_report
 
 
-class IdentityPreprocessor:
-    feature_columns = ["x"]
+def _sample_feature_df() -> pd.DataFrame:
+    """Build synthetic dataset spanning 10 distinct dates for 5-block cross-validation"""
+    rows = []
+    for day in range(1, 11):
+        for hour in [10, 14]:
+            rows.append(
+                {
+                    "user_id": "u1",
+                    "timestamp": pd.Timestamp(f"2026-07-{day:02d} {hour:02d}:30:00"),
+                    "time_development": float(day * 2.0),
+                    "time_writing": 15.0,
+                    "time_communication": 10.0,
+                    "time_personal_distraction": 5.0,
+                    "time_media": 0.0,
+                    "time_research": 0.0,
+                    "hour_of_day": hour + 0.5,
+                    "is_morning": int(hour < 12),
+                    "is_afternoon": int(hour >= 12),
+                    "sleep_hours": 7.5,
+                    "minutes_since_prev1_window": 60.0,
+                    "stress": float((day % 4) + 1.0),
+                    "fatigue": float((day % 3) + 1.0),
+                    "valence": float((day % 5) + 1.0),
+                    "arousal": float((day % 3) + 2.0),
+                    "productivity": float((day % 5) + 1.5),
+                    "engagement": float((day % 4) + 2.0),
+                    "overall_wellbeing": float((day % 5) + 2.5),
+                },
+            )
+    return pd.DataFrame(rows)
 
-    def transform(self, table: pd.DataFrame) -> pd.DataFrame:
-        return table
+
+def _single_feature_row() -> pd.DataFrame:
+    return _sample_feature_df().iloc[0:1]
 
 
-class ConstantEstimator:
-    def __init__(self, value: float) -> None:
-        self.value = value
-
-    def predict(self, table: pd.DataFrame) -> list[float]:
-        return [self.value] * len(table)
-
-
-def test_prediction_report_uses_runtime_contract() -> None:
-    target_models = {
-        target: TargetModel(
-            target=target,
-            model_name="saved-model",
-            estimator=ConstantEstimator(float(index)),
-            preprocessor=IdentityPreprocessor(),
-            metrics={},
+class TestCreatePredictionReport:
+    def test_report_structure(self) -> None:
+        feature_df = _sample_feature_df()
+        bundle = train_dashboard_models(
+            feature_df,
+            feature_columns=[
+                "time_development",
+                "time_writing",
+                "time_communication",
+                "time_personal_distraction",
+            ],
         )
-        for index, target in enumerate(TARGET_COLUMNS)
-    }
-    bundle = ModelBundle(
-        feature_set=PRODUCTION_FEATURE_SET,
-        feature_columns=["x"],
-        targets=list(TARGET_COLUMNS),
-        target_models=target_models,
-        metadata={},
-    )
 
-    report = build_prediction_report(
-        bundle,
-        pd.DataFrame(
-            {
-                "user_id": ["user1"],
-                "timestamp": [pd.Timestamp("2026-07-21 14:00:00")],
-                "x": [1.0],
+        single_row = _single_feature_row()
+        report = create_prediction_report(bundle, single_row)
+
+        assert report["participant_id"] == "u1"
+        assert "2026-07-01" in report["prediction_timestamp"]
+        assert len(report["predictions"]) == len(bundle.targets)
+
+        for item in report["predictions"]:
+            assert "target" in item
+            assert "predicted_score" in item
+            assert isinstance(item["predicted_score"], float)
+
+    def test_multi_row_raises(self) -> None:
+        feature_df = _sample_feature_df()
+        bundle = train_dashboard_models(feature_df, feature_columns=["time_development"])
+
+        two_rows = _sample_feature_df().iloc[:2]
+        with pytest.raises(ValueError, match="exactly 1 row"):
+            create_prediction_report(bundle, two_rows)
+
+
+class TestRunInferenceService:
+    def test_run_inference_with_buckets(self) -> None:
+        feature_df = _sample_feature_df()
+        bundle = train_dashboard_models(
+            feature_df,
+            feature_columns=[
+                "time_development",
+                "time_writing",
+                "time_communication",
+                "time_personal_distraction",
+                "time_media",
+                "time_research",
+            ],
+        )
+
+        buckets = {
+            "aw-watcher-window_host": {
+                "type": "currentwindow",
+                "events": [
+                    {
+                        "timestamp": "2026-07-29T14:00:00Z",
+                        "duration": 1800.0,
+                        "data": {"category": "Work > Programming", "app": "VS Code"},
+                    },
+                ],
             },
-        ),
-        "user1",
-        "2026-07-21T14:00:00+02:00",
-    )
+        }
 
-    assert report["window_minutes"] == 60
-    assert report["feature_set"] == PRODUCTION_FEATURE_SET
-    assert report["artifact_fingerprint"] == CURRENT_MODEL_SHA256
-    assert [item["id"] for item in report["questions"]] == QUESTION_IDS
-    assert [item["prediction"] for item in report["questions"]] == [
-        float(index) for index in range(len(TARGET_COLUMNS))
-    ]
-    assert all("explanation" not in item for item in report["questions"])
-    assert all("model" not in item for item in report["questions"])
-    assert all("metrics" not in item for item in report["questions"])
-
-
-def test_prediction_report_rejects_mismatched_identity() -> None:
-    bundle = ModelBundle(
-        feature_set=PRODUCTION_FEATURE_SET,
-        feature_columns=[],
-        targets=[],
-        target_models={},
-        metadata={},
-    )
-    features = pd.DataFrame(
-        {
-            "user_id": ["user1"],
-            "timestamp": [pd.Timestamp("2026-07-21 14:00:00")],
-        },
-    )
-
-    with pytest.raises(ValueError, match="user_id does not match"):
-        build_prediction_report(
-            bundle,
-            features,
-            "user2",
-            "2026-07-21T14:00:00+02:00",
+        report = run_inference(
+            bundle=bundle,
+            activitywatch_buckets=buckets,
+            user_id="u1",
+            as_of=datetime(2026, 7, 29, 14, 30),
         )
+
+        assert report["participant_id"] == "u1"
+        assert len(report["predictions"]) > 0
