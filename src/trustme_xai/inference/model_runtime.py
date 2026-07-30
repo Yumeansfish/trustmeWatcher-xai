@@ -13,6 +13,27 @@ from trustme_xai.inference.ensemble_bundle import (
     NUM_BLOCKS,
 )
 
+# Legacy constants and backward compatibility exports
+CURRENT_MODEL_SHA256 = ""
+
+
+class ModelBundle:
+    """Legacy ModelBundle stub for backward compatibility"""
+
+    pass
+
+
+class TargetModel:
+    """Legacy TargetModel stub for backward compatibility"""
+
+    pass
+
+
+class PerUserStandardizer:
+    """Legacy PerUserStandardizer stub for backward compatibility"""
+
+    pass
+
 
 def save_model_bundle(bundle: EnsembleBundle, path: str | Path) -> None:
     """Save an EnsembleBundle instance to disk using joblib
