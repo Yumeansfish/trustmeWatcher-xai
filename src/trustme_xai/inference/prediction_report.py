@@ -1,4 +1,4 @@
-"""Live prediction report generation averaging across 5-block ensemble models"""
+"""Live prediction report generation from fitted production model bundle"""
 
 from __future__ import annotations
 
@@ -14,15 +14,16 @@ def create_prediction_report(
     bundle: EnsembleBundle,
     feature_row: pd.DataFrame,
 ) -> dict[str, Any]:
-    """Average live predictions across 5 block models and return prediction dictionary
+    """Generate live prediction report dictionary from fitted model bundle
 
     Args:
-        bundle: loaded 5-block EnsembleBundle instance
+        bundle: loaded EnsembleBundle instance
         feature_row: single-row pd.DataFrame containing current model features
 
     Returns:
-        dict containing participant_id, prediction_timestamp, and averaged predictions
+        dict containing participant_id, prediction_timestamp, and model predictions
     """
+
     if len(feature_row) != 1:
         raise ValueError(f"feature_row must contain exactly 1 row, got {len(feature_row)}")
 
