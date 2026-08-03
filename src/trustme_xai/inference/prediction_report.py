@@ -55,6 +55,7 @@ def create_prediction_report(
         "participant_id": participant_id,
         "prediction_timestamp": prediction_timestamp,
         "generated_at": generated_at,
-        "model_version": bundle.metadata.get("model_version", "5block_ensemble_v1"),
+        "model_version": bundle.metadata.get("model_version", "production_purged_v1"),
+
         "predictions": predictions,
     }

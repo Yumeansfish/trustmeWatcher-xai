@@ -42,7 +42,10 @@ RECEIVER_PRIORITY: tuple[str, ...] = (
 )
 
 STEP_SIZE_MINUTES: float = 5.0
-MAX_SHIFTS: int = 3
+MAX_SHIFTS: int = 12
+DEFAULT_SENSITIVITY_GAMMA: float = 1.0
+
+
 
 
 def find_counterfactual(
@@ -50,18 +53,20 @@ def find_counterfactual(
     feature_row: pd.DataFrame,
     target: str,
     desired_score: float,
+    sensitivity_gamma: float = DEFAULT_SENSITIVITY_GAMMA,
 ) -> dict[str, Any]:
-    """Run Zero-Sum Swap search evaluated against 5-block ensemble predictor
+    """Run Dynamic Zero-Sum Swap search evaluated against 5-block ensemble predictor
 
     Args:
         bundle: loaded 5-block EnsembleBundle instance
         feature_row: single-row pd.DataFrame containing baseline features
         target: target metric identifier string
         desired_score: target desired continuous score
+        sensitivity_gamma: sensitivity scaling multiplier (default 1.0)
 
     Returns:
         dict containing participant_id, prediction_timestamp, target, predicted_score,
-        desired_score, success boolean, and minimal list of shifts
+        desired_score, calibrated_projected_score, success boolean, and minimal list of shifts
     """
     if len(feature_row) != 1:
         raise ValueError(f"feature_row must contain exactly 1 row, got {len(feature_row)}")
@@ -73,8 +78,10 @@ def find_counterfactual(
 
     row_data = feature_row.iloc[0].to_dict()
     participant_id, ts_str = str(row_data["user_id"]), pd.Timestamp(row_data["timestamp"]).isoformat()
-    is_neg = metric_key in (TargetMetric.STRESS, TargetMetric.FATIGUE)
-    is_satisfied = baseline_pred <= desired_score if is_neg else baseline_pred >= desired_score
+    
+    # Determine if requested desired_score requires an increase or decrease
+    want_increase = desired_score > baseline_pred
+    is_satisfied = baseline_pred >= desired_score if want_increase else baseline_pred <= desired_score
 
     if is_satisfied:
         return {
@@ -83,26 +90,32 @@ def find_counterfactual(
             "target": str(metric_key),
             "predicted_score": round(baseline_pred, 4),
             "desired_score": round(float(desired_score), 4),
+            "calibrated_projected_score": round(baseline_pred, 4),
             "success": True,
             "shifts": [],
         }
 
-    current, deltas_acc = dict(row_data), {}
-    donors = [c for c in DONOR_PRIORITY if float(current.get(c, 0.0)) >= STEP_SIZE_MINUTES] or [
-        c for c in ACTIONABLE_CATEGORIES if float(current.get(c, 0.0)) >= STEP_SIZE_MINUTES
-    ]
-    best_pred, found_solution = baseline_pred, False
+    # Extract all actionable categories present in feature row
+    current = dict(row_data)
+    actionable_in_row = [c for c in ACTIONABLE_CATEGORIES if c in current and float(current.get(c, 0.0)) >= STEP_SIZE_MINUTES]
+    if not actionable_in_row:
+        actionable_in_row = [c for c in current.keys() if c.startswith("time_") or c.startswith("minutes_")]
+
+    best_pred = baseline_pred
+    best_cand_df = feature_row.copy()
+    deltas_acc: dict[str, float] = {}
 
     for _ in range(MAX_SHIFTS):
-        if found_solution:
-            break
         improved = False
+        best_step_pred = best_pred
+        best_donor, best_receiver, best_step_size = None, None, 0.0
 
-        for donor in donors:
-            if float(current.get(donor, 0.0)) < STEP_SIZE_MINUTES:
+        for donor in actionable_in_row:
+            avail = float(current.get(donor, 0.0))
+            if avail < STEP_SIZE_MINUTES:
                 continue
 
-            for receiver in RECEIVER_PRIORITY:
+            for receiver in ACTIONABLE_CATEGORIES:
                 if receiver == donor or not check_time_budget(current, {donor: -STEP_SIZE_MINUTES, receiver: STEP_SIZE_MINUTES}):
                     continue
 
@@ -112,18 +125,25 @@ def find_counterfactual(
                 validate_counterfactual(row_data, cand)
 
                 cand_pred = float(bundle.predict_target(pd.DataFrame([cand]), metric_key))
-                is_better = cand_pred < best_pred if is_neg else cand_pred > best_pred
+                is_better = cand_pred > best_step_pred if want_increase else cand_pred < best_step_pred
 
                 if is_better:
-                    best_pred, current = cand_pred, cand
-                    deltas_acc[donor] = deltas_acc.get(donor, 0.0) - STEP_SIZE_MINUTES
-                    deltas_acc[receiver] = deltas_acc.get(receiver, 0.0) + STEP_SIZE_MINUTES
+                    best_step_pred = cand_pred
+                    best_donor, best_receiver = donor, receiver
+                    best_step_size = STEP_SIZE_MINUTES
                     improved = True
-                    found_solution = cand_pred <= desired_score if is_neg else cand_pred >= desired_score
-                    break
-            if improved:
+
+        if improved and best_donor and best_receiver:
+            best_pred = best_step_pred
+            current[best_donor] -= best_step_size
+            current[best_receiver] = float(current.get(best_receiver, 0.0)) + best_step_size
+            deltas_acc[best_donor] = deltas_acc.get(best_donor, 0.0) - best_step_size
+            deltas_acc[best_receiver] = deltas_acc.get(best_receiver, 0.0) + best_step_size
+
+            found_solution = best_pred >= desired_score if want_increase else best_pred <= desired_score
+            if found_solution:
                 break
-        if not improved:
+        else:
             break
 
     shifts = [
@@ -132,12 +152,20 @@ def find_counterfactual(
         if abs(delta) > 1e-4
     ]
 
+    raw_delta = best_pred - baseline_pred
+    calibrated_projected = baseline_pred + (raw_delta * sensitivity_gamma)
+
+    is_satisfied_final = calibrated_projected >= desired_score if want_increase else calibrated_projected <= desired_score
+
     return {
         "participant_id": participant_id,
         "prediction_timestamp": ts_str,
         "target": str(metric_key),
         "predicted_score": round(baseline_pred, 4),
         "desired_score": round(float(desired_score), 4),
-        "success": found_solution or (best_pred <= desired_score if is_neg else best_pred >= desired_score),
+        "calibrated_projected_score": round(calibrated_projected, 4),
+        "success": is_satisfied_final,
         "shifts": shifts,
     }
+
+

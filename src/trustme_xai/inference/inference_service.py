@@ -111,3 +111,4 @@ def _build_feature_row_from_buckets(
             row[col] = 0.0
 
     return pd.DataFrame([row])
+
