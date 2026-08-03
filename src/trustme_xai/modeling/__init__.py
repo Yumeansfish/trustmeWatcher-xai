@@ -1,17 +1,5 @@
-"""Keep the package path required by legacy joblib artifacts"""
+"""Modeling package for trustme_xai"""
 
-from trustme_xai.inference.model_runtime import (
-    CURRENT_MODEL_SHA256,
-    ModelBundle,
-    PerUserStandardizer,
-    TargetModel,
-    load_model_bundle,
-)
+from trustme_xai.inference.model_runtime import load_model_bundle
 
-__all__ = [
-    "CURRENT_MODEL_SHA256",
-    "ModelBundle",
-    "PerUserStandardizer",
-    "TargetModel",
-    "load_model_bundle",
-]
+__all__ = ["load_model_bundle"]

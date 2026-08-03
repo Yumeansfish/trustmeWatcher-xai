@@ -28,6 +28,9 @@ class ModelFamily(StrEnum):
     LASSO = "lasso"
     GRADIENT_BOOSTING = "gradient_boosting"
     RANDOM_FOREST = "random_forest"
+    LIGHTGBM = "lightgbm"
+    XGBOOST = "xgboost"
+
 
 
 def _empty_metadata() -> dict[str, str]:

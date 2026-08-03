@@ -52,11 +52,15 @@ def explain_target_prediction(
     if missing:
         raise ValueError(f"feature_row is missing model features: {missing}")
 
+    from lightgbm import LGBMRegressor
+    from xgboost import XGBRegressor
+
     estimator = target_model.estimator
     if not isinstance(
         estimator,
-        (DecisionTreeRegressor, RandomForestRegressor, GradientBoostingRegressor),
+        (DecisionTreeRegressor, RandomForestRegressor, GradientBoostingRegressor, LGBMRegressor, XGBRegressor),
     ):
+
         raise TypeError(f"SHAP does not support model type: {type(estimator).__name__}")
 
     transformed = target_model.preprocessor.transform(feature_row)

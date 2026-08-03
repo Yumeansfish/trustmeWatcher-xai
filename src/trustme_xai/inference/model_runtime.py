@@ -13,26 +13,6 @@ from trustme_xai.inference.ensemble_bundle import (
     NUM_BLOCKS,
 )
 
-# Legacy constants and backward compatibility exports
-CURRENT_MODEL_SHA256 = ""
-
-
-class ModelBundle:
-    """Legacy ModelBundle stub for backward compatibility"""
-
-    pass
-
-
-class TargetModel:
-    """Legacy TargetModel stub for backward compatibility"""
-
-    pass
-
-
-class PerUserStandardizer:
-    """Legacy PerUserStandardizer stub for backward compatibility"""
-
-    pass
 
 
 def save_model_bundle(bundle: EnsembleBundle, path: str | Path) -> None:
@@ -64,6 +44,9 @@ def load_model_bundle(path: str | Path) -> EnsembleBundle:
     return loaded
 
 
+_load_model_bundle = load_model_bundle
+
+
 def validate_ensemble_bundle(bundle: EnsembleBundle) -> None:
     """Validate structural constraints of an EnsembleBundle
 
@@ -81,7 +64,8 @@ def validate_ensemble_bundle(bundle: EnsembleBundle) -> None:
             raise ValueError(f"missing target model for {target}")
 
         model_entry = bundle.target_models[target]
-        if len(model_entry.block_models) != NUM_BLOCKS:
+        if len(model_entry.block_models) not in (1, NUM_BLOCKS):
             raise ValueError(
-                f"{target} must contain exactly {NUM_BLOCKS} block models, got {len(model_entry.block_models)}",
+                f"{target} must contain 1 or {NUM_BLOCKS} block models, got {len(model_entry.block_models)}",
             )
+

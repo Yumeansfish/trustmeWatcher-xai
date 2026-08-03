@@ -33,6 +33,9 @@ ACTIONABLE_CATEGORIES: tuple[str, ...] = (
     "time_personal_distraction",
     "time_media",
     "time_research",
+    "time_other",
+    "time_system_admin",
+
 )
 
 DERIVED_FOCUS_METRICS: tuple[str, ...] = (
