@@ -1,4 +1,4 @@
-"""Store 5-block ensemble model bundles for live prediction"""
+"""Store fitted model bundles for live prediction"""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _empty_metadata() -> dict[str, str]:
 
 @dataclass
 class EnsembleTargetModel:
-    """Store 5 block regressors for one target metric"""
+    """Store fitted regressors for one target metric"""
 
     target: TargetMetric
     family: ModelFamily
@@ -50,13 +50,13 @@ class EnsembleTargetModel:
     avg_val_mse: float
 
     def predict(self, feature_row: pd.DataFrame) -> float:
-        """Average live predictions across the 5 block models
+        """Compute live prediction from fitted model
 
         Args:
             feature_row: single-row pd.DataFrame containing required model features
 
         Returns:
-            averaged continuous float prediction
+            continuous float prediction
         """
         missing = [c for c in self.feature_columns if c not in feature_row.columns]
         if missing:
@@ -66,14 +66,14 @@ class EnsembleTargetModel:
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        # Predict across all 5 block models and return average
         block_preds = [float(model.predict(X)[0]) for model in self.block_models]
         return float(np.mean(block_preds))
 
 
 @dataclass
 class EnsembleBundle:
-    """Store 5-block ensemble models across all target metrics"""
+    """Store fitted model bundle across all target metrics"""
+
 
     targets: list[TargetMetric]
     target_models: dict[TargetMetric, EnsembleTargetModel]
