@@ -91,6 +91,7 @@ def build_production_features(
         build_hourly_behavior_table(normalized_events),
         load_production_behavior_state_model(),
         current_window_minutes=PRODUCTION_WINDOW_MINUTES,
+        events=normalized_events,
     )
 
     missing = [

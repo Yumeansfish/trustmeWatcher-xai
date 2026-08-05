@@ -362,6 +362,7 @@ def add_behavior_state_features(
     hourly: pd.DataFrame,
     model: BehaviorStateModel,
     current_window_minutes: int = 60,
+    events: ParsedActivityWatchEvents | None = None,
 ) -> pd.DataFrame:
     """Add current and prior state features to answer rows
 
@@ -370,6 +371,7 @@ def add_behavior_state_features(
         hourly: hourly behavior table
         model: behavior state model
         current_window_minutes: minutes in the current answer window
+        events: optional events used to clip the current hour
 
     Returns:
         pd.DataFrame with added behavior state features
@@ -384,6 +386,16 @@ def add_behavior_state_features(
         else {}
     )
     empty = pd.DataFrame(columns=labeled_hourly.columns)
+    event_groups: dict[str, dict[str, pd.DataFrame]] = {}
+    if events is not None:
+        event_groups = {
+            name: (
+                dict(tuple(table.groupby("user_id")))
+                if not table.empty
+                else {}
+            )
+            for name, table in (("window", events.window), ("web", events.web))
+        }
     rows: list[dict[str, float]] = []
 
     for item in table.itertuples(index=False):
@@ -394,6 +406,40 @@ def add_behavior_state_features(
         answer_time = raw_answer_time
         current_start = answer_time - pd.Timedelta(minutes=current_window_minutes)
         user_hours = by_user.get(user_id, empty)
+        if events is not None:
+            hour_start = answer_time.floor("h")
+
+            def clip_current(name: str) -> pd.DataFrame:
+                source = event_groups[name].get(user_id)
+                if source is None or source.empty:
+                    return pd.DataFrame(columns=getattr(events, name).columns)
+                selected = source.loc[
+                    (source["timestamp"] < answer_time)
+                    & (source["event_end"] > hour_start)
+                ].copy()
+                selected["event_end"] = selected["event_end"].clip(
+                    upper=answer_time,
+                )
+                return selected.loc[
+                    selected["event_end"] > selected["timestamp"]
+                ]
+
+            partial_events = ParsedActivityWatchEvents(
+                window=clip_current("window"),
+                web=clip_current("web"),
+                input=pd.DataFrame(),
+            )
+            partial = label_hourly_states(
+                build_hourly_behavior_table(partial_events),
+                model,
+            )
+            user_hours = pd.concat(
+                [
+                    user_hours.loc[user_hours["hour"] != hour_start],
+                    partial,
+                ],
+                ignore_index=True,
+            )
         row: dict[str, float] = {}
         row.update(
             interval_state_features(
