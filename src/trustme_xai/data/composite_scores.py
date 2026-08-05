@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import numpy as np
 import pandas as pd
 
@@ -116,3 +118,12 @@ def derive_model_targets(answers: pd.DataFrame) -> pd.DataFrame:
     if unexpected:
         raise RuntimeError(f"failed to derive model targets: {unexpected}")
     return result
+
+
+def derive_model_target_values(
+    answers: Mapping[str, object],
+) -> dict[str, float]:
+    """Derive one runtime-ready target mapping from raw q1--q9 answers."""
+    result = derive_model_targets(pd.DataFrame([dict(answers)]))
+    row = result.iloc[0]
+    return {target: float(row[target]) for target in MODEL_TARGETS}

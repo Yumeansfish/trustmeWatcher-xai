@@ -7,7 +7,6 @@ import pandas as pd
 import pytest
 
 from trustme_xai.data.binarization import (
-    HARD_THRESHOLD,
     binarize_targets,
     compute_user_medians,
 )
@@ -19,7 +18,7 @@ def _sample_train_data() -> pd.DataFrame:
         {
             "user_id": ["u1", "u1", "u1", "u2", "u2", "u2"],
             "productivity": [1.0, 3.0, 5.0, 2.0, 4.0, 6.0],  # u1 med=3.0, u2 med=4.0
-            "stress": [5.0, 4.0, 3.0, 1.0, 2.0, 3.0],        # u1 med=4.0, u2 med=2.0
+            "stress_management": [5.0, 4.0, 3.0, 1.0, 2.0, 3.0],
         },
     )
 
@@ -30,7 +29,7 @@ def _sample_val_data() -> pd.DataFrame:
         {
             "user_id": ["u1", "u2", "u3_new"],
             "productivity": [2.5, 4.5, 1.0],
-            "stress": [3.5, 2.5, 5.0],
+            "stress_management": [3.5, 2.5, 5.0],
         },
     )
 
@@ -77,7 +76,7 @@ class TestBinarizeTargets:
 
         result = binarize_targets(val_df, medians_df)
         assert "productivity_bin_hard" in result.columns
-        assert "stress_bin_hard" in result.columns
+        assert "stress_management_bin_hard" in result.columns
 
         # productivity >= 3.0: u1 (2.5 -> 0), u2 (4.5 -> 1), u3 (1.0 -> 0)
         np.testing.assert_array_equal(
@@ -92,7 +91,7 @@ class TestBinarizeTargets:
 
         result = binarize_targets(val_df, medians_df)
         assert "productivity_bin_median" in result.columns
-        assert "stress_bin_median" in result.columns
+        assert "stress_management_bin_median" in result.columns
 
         # u1 prod=2.5 vs u1_med=3.0 -> 0
         # u2 prod=4.5 vs u2_med=4.0 -> 1
@@ -110,7 +109,7 @@ class TestBinarizeTargets:
         result = binarize_targets(val_df, medians_df)
         # u3_new has stress=5.0. Global median for stress is median(4.0, 2.0) = 3.0
         # 5.0 >= 3.0 -> 1
-        assert result["stress_bin_median"].iloc[2] == 1
+        assert result["stress_management_bin_median"].iloc[2] == 1
 
     def test_no_data_leakage_on_validation_splits(self) -> None:
         """Verifies thresholds are strictly derived from medians_df (training data)"""

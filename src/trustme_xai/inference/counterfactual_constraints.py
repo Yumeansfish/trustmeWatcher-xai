@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+import pandas as pd
+
 IMMUTABLE_FEATURES: frozenset[str] = frozenset(
     {
         "timestamp",
@@ -17,25 +19,13 @@ IMMUTABLE_FEATURES: frozenset[str] = frozenset(
 )
 
 ACTIONABLE_CATEGORIES: tuple[str, ...] = (
-    "minutes_media_social_media",
-    "minutes_media_games",
-    "minutes_media_video",
-    "minutes_comms_im",
-    "minutes_comms_email",
-    "minutes_uncategorized",
-    "minutes_work",
-    "minutes_work_programming",
-    "minutes_work_office",
-    "minutes_work_research_and_reading",
-    "time_development",
-    "time_writing",
-    "time_communication",
     "time_personal_distraction",
     "time_media",
-    "time_research",
+    "time_communication",
     "time_other",
-    "time_system_admin",
-
+    "time_development",
+    "time_writing",
+    "time_research",
 )
 
 DERIVED_FOCUS_METRICS: tuple[str, ...] = (
@@ -107,7 +97,7 @@ def validate_counterfactual(
         changed = (
             f in original_row
             and f in modified_row
-            and original_row[f] != modified_row[f]
+            and not _same_value(original_row[f], modified_row[f])
         )
         if changed:
             raise ValueError(f"immutable feature modified: {f}")
@@ -129,3 +119,13 @@ def validate_counterfactual(
     active = sum(float(modified_row.get(cat, 0.0)) for cat in ACTIONABLE_CATEGORIES)
     if active > WINDOW_TIME_BUDGET + TOLERANCE:
         raise ValueError(f"time budget upper bound invariant violated: {active} > 60.0")
+
+
+def _same_value(left: Any, right: Any) -> bool:
+    """Treat two missing scalar values as unchanged."""
+    try:
+        if bool(pd.isna(left)) and bool(pd.isna(right)):
+            return True
+        return bool(left == right)
+    except (TypeError, ValueError):
+        return False

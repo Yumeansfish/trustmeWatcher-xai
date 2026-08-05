@@ -19,6 +19,7 @@ from trustme_xai.feature_pipeline.event_contract import (
     prepare_inference_events,
 )
 from trustme_xai.feature_pipeline.production_features import (
+    ACTIONABLE_CATEGORY_COLUMNS,
     PRODUCTION_FEATURE_COLUMNS,
     PRODUCTION_WINDOW_MINUTES,
     build_production_features,
@@ -105,6 +106,7 @@ def build_current_features(
     as_of: datetime | str | pd.Timestamp,
     previous_questionnaire_times: Sequence[object] = (),
     past_self_reports: Sequence[Mapping[str, object]] = (),
+    include_actionable_categories: bool = False,
 ) -> pd.DataFrame:
     """Build one current production feature row
 
@@ -136,7 +138,11 @@ def build_current_features(
         current_time,
         [*previous_questionnaire_times, *report_times],
     )
-    features = build_production_features(clipped, requests)
+    features = build_production_features(
+        clipped,
+        requests,
+        include_actionable_categories=include_actionable_categories,
+    )
     current = features.loc[
         features["user_id"].astype(str).eq(normalized_user_id)
         & features["timestamp"].eq(current_time)
@@ -158,6 +164,15 @@ def build_current_features(
         "user_id",
         "timestamp",
         *PRODUCTION_FEATURE_COLUMNS,
+        *(
+            [
+                column
+                for column in ACTIONABLE_CATEGORY_COLUMNS
+                if column not in PRODUCTION_FEATURE_COLUMNS
+            ]
+            if include_actionable_categories
+            else []
+        ),
         *all_history_columns(),
     ]
     if list(current.columns) != expected:
@@ -207,6 +222,7 @@ def build_current_features_from_buckets(
     as_of: datetime | str | pd.Timestamp,
     previous_questionnaire_times: Sequence[object] = (),
     past_self_reports: Sequence[Mapping[str, object]] = (),
+    include_actionable_categories: bool = False,
 ) -> pd.DataFrame:
     """Build one production row from raw ActivityWatch buckets
 
@@ -235,6 +251,7 @@ def build_current_features_from_buckets(
         current_time,
         previous_questionnaire_times,
         past_self_reports,
+        include_actionable_categories,
     )
 
 

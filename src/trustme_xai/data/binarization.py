@@ -4,17 +4,11 @@ from __future__ import annotations
 
 import pandas as pd
 
+from trustme_xai.contracts import MODEL_TARGETS
+
 HARD_THRESHOLD = 3.0
 
-_TARGET_CANDIDATES = (
-    "stress",
-    "fatigue",
-    "valence",
-    "arousal",
-    "productivity",
-    "engagement",
-    "overall_wellbeing",
-)
+_TARGET_CANDIDATES = tuple(MODEL_TARGETS)
 
 
 def _detect_targets(df: pd.DataFrame) -> list[str]:
