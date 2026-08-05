@@ -1,5 +1,5 @@
 # PYTHON_ARGCOMPLETE_OK
-"""Train the seven-target production_25 model"""
+"""Train the seven-target production model"""
 
 from __future__ import annotations
 
@@ -29,16 +29,23 @@ from trustme_xai.feature_pipeline.production_features import (
     PRODUCTION_FEATURE_COLUMNS,
     build_production_features,
 )
+from trustme_xai.feature_pipeline.self_report_features import (
+    add_self_report_features,
+)
 from trustme_xai.inference.model_runtime import save_model_bundle
 from trustme_xai.modeling.models import MODEL_NAMES, model_specs
 from trustme_xai.modeling.splits import production_day_purged_within_user_split
-from trustme_xai.modeling.train import TrainingResult, train_models
+from trustme_xai.modeling.train import train_models
 
 SOURCE_ROOT = Path("/Users/chrono/trustme-proj/github_repo/usi-trust-me-xai")
 DEFAULT_ANSWERS = SOURCE_ROOT / "output" / "answers.csv"
 DEFAULT_EVENT_ROOT = SOURCE_ROOT / "output" / "parsed_activitywatch"
+DEFAULT_FEATURES = (
+    SOURCE_ROOT / "tmp" / "exact_kmeans_ablation" / "refit_training_table.csv"
+)
+DEFAULT_ANSWER_SOURCES = SOURCE_ROOT / "tmp" / "answer_sources.csv"
 DEFAULT_OUTPUT = Path("src/trustme_xai/current.joblib")
-DEFAULT_REPORT_DIR = Path("/tmp/trustme_xai_seven_target_training")
+DEFAULT_REPORT_DIR = Path("/tmp/trustme_xai_history_training")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,14 +55,19 @@ def build_parser() -> argparse.ArgumentParser:
         configured ArgumentParser
     """
     parser = argparse.ArgumentParser(
-        description="train seven production_25 regressors",
+        description="train seven ActivityWatch and self-report regressors",
     )
     parser.add_argument("--answers-csv", type=Path, default=DEFAULT_ANSWERS)
+    parser.add_argument(
+        "--answer-sources-csv",
+        type=Path,
+        default=DEFAULT_ANSWER_SOURCES,
+    )
     parser.add_argument("--event-root", type=Path, default=DEFAULT_EVENT_ROOT)
     parser.add_argument(
         "--features-csv",
         type=Path,
-        default=None,
+        default=DEFAULT_FEATURES,
         help="cached production_25 rows built by the canonical feature pipeline",
     )
     parser.add_argument(
@@ -204,6 +216,7 @@ def rebuild_features(
 
 def load_training_table(
     answers_path: Path,
+    answer_sources_path: Path,
     event_root: Path,
     feature_cache: Path | None,
     rebuild: bool,
@@ -212,12 +225,13 @@ def load_training_table(
 
     Args:
         answers_path: questionnaire answer CSV
+        answer_sources_path: answer source CSV
         event_root: parsed ActivityWatch CSV directory
         feature_cache: cached production feature CSV
         rebuild: whether to ignore the cache
 
     Returns:
-        pd.DataFrame with raw answers and derived targets
+        pd.DataFrame with targets and causal history features
     """
     answers = pd.read_csv(answers_path, parse_dates=["timestamp"])
     answers["user_id"] = answers["user_id"].astype(str)
@@ -260,16 +274,20 @@ def load_training_table(
     )
     if len(table) != len(answers) or len(table) != len(features):
         raise ValueError("answers and production features must match one-to-one")
-    return derive_model_targets(table)
-
-
-def _result_table(
-    normalization: str,
-    result: TrainingResult,
-) -> pd.DataFrame:
-    table = result.summary.copy()
-    table.insert(0, "normalization", normalization)
-    return table
+    table = derive_model_targets(table)
+    sources = pd.read_csv(answer_sources_path, parse_dates=["timestamp"])
+    sources["user_id"] = sources["user_id"].astype(str)
+    if sources.duplicated(["user_id", "timestamp"]).any():
+        raise ValueError("answer source rows must have unique user timestamps")
+    table = table.merge(
+        sources[["user_id", "timestamp", "answer_source"]],
+        on=["user_id", "timestamp"],
+        how="left",
+        validate="one_to_one",
+    )
+    if table["answer_source"].isna().any():
+        raise ValueError("every answer row needs an answer source")
+    return add_self_report_features(table)
 
 
 def _macro(table: pd.DataFrame) -> dict[str, float]:
@@ -307,24 +325,19 @@ def main() -> None:
     args = build_parser().parse_args()
     table = load_training_table(
         args.answers_csv,
+        args.answer_sources_csv,
         args.event_root,
         args.features_csv,
         args.rebuild_features or args.features_csv is None,
     )
     split = production_day_purged_within_user_split(table)
     specs = model_specs(args.models)
-    results = {
-        normalization: train_models(
-            table,
-            split,
-            list(PRODUCTION_FEATURE_COLUMNS),
-            normalization,
-            specs,
-        )
-        for normalization in ("global", "per_user")
-    }
-
-    deployed = results[args.deploy_normalization]
+    deployed = train_models(
+        table,
+        split,
+        args.deploy_normalization,
+        specs,
+    )
     deployed.bundle.metadata.update(
         {
             "deployment_policy": (
@@ -344,24 +357,12 @@ def main() -> None:
     report_dir = Path(args.report_dir)
     report_dir.mkdir(parents=True, exist_ok=True)
     table.to_csv(report_dir / "training_table.csv", index=False)
-    metrics = pd.concat(
-        [
-            _result_table(normalization, result)
-            for normalization, result in results.items()
-        ],
-        ignore_index=True,
+    metrics = deployed.summary.copy()
+    metrics.insert(0, "normalization", args.deploy_normalization)
+    candidates = deployed.candidates.assign(
+        normalization=args.deploy_normalization,
     )
-    candidates = pd.concat(
-        [
-            result.candidates.assign(normalization=normalization)
-            for normalization, result in results.items()
-        ],
-        ignore_index=True,
-    )
-    predictions = pd.concat(
-        [result.test_predictions for result in results.values()],
-        ignore_index=True,
-    )
+    predictions = deployed.test_predictions
     metrics.to_csv(report_dir / "metrics.csv", index=False)
     candidates.to_csv(report_dir / "validation_candidates.csv", index=False)
     predictions.to_csv(report_dir / "test_predictions.csv", index=False)
@@ -373,22 +374,16 @@ def main() -> None:
         },
     ).to_csv(report_dir / "split.csv", index=False)
 
-    comparison = {
-        normalization: _macro(
-            metrics.loc[metrics["normalization"] == normalization],
-        )
-        for normalization in ("global", "per_user")
-    }
     payload = {
         "source_rows": len(table),
         "targets": MODEL_TARGETS,
-        "feature_set": "production_25",
-        "feature_columns": PRODUCTION_FEATURE_COLUMNS,
+        "feature_set": deployed.bundle.feature_set,
+        "feature_columns": deployed.bundle.feature_columns,
         "split_counts": {
             name: int((split == name).sum())
             for name in ("train", "validation", "gap", "test")
         },
-        "normalization_comparison": comparison,
+        "metrics": _macro(metrics),
         "deployment_normalization": args.deploy_normalization,
         "preprocessor_fit_scope": "train_plus_validation",
         "artifact_path": str(Path(args.output_path).resolve()),

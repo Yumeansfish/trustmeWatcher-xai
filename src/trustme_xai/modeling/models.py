@@ -6,14 +6,27 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import Lasso, Ridge
+from sklearn.ensemble import (
+    ExtraTreesRegressor,
+    HistGradientBoostingRegressor,
+    RandomForestRegressor,
+)
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 MODEL_NAMES = (
-    "ridge",
-    "lasso",
-    "gradient_boosting",
-    "random_forest",
+    "ridge_0.1",
+    "ridge_1",
+    "ridge_10",
+    "extra_leaf2",
+    "extra_leaf5",
+    "extra_leaf10",
+    "forest_leaf5",
+    "forest_leaf10",
+    "hist_leaf10",
+    "hist_leaf20",
 )
 
 
@@ -38,19 +51,90 @@ def model_specs(
     Returns:
         selected ModelSpec values
     """
+    def ridge(alpha: float) -> Any:
+        return make_pipeline(
+            SimpleImputer(strategy="median", add_indicator=True),
+            StandardScaler(),
+            Ridge(alpha=alpha),
+        )
+
+    def imputed(estimator: Any) -> Any:
+        return make_pipeline(
+            SimpleImputer(strategy="median", add_indicator=True),
+            estimator,
+        )
+
     factories: dict[str, Callable[[], Any]] = {
-        "ridge": lambda: Ridge(alpha=1.0),
-        "lasso": lambda: Lasso(alpha=0.01, max_iter=20_000),
-        "gradient_boosting": lambda: GradientBoostingRegressor(
-            max_depth=3,
-            n_estimators=50,
-            random_state=random_state,
+        "ridge_0.1": lambda: ridge(0.1),
+        "ridge_1": lambda: ridge(1.0),
+        "ridge_10": lambda: ridge(10.0),
+        "extra_leaf2": lambda: imputed(
+            ExtraTreesRegressor(
+                n_estimators=200,
+                min_samples_leaf=2,
+                max_features=0.7,
+                n_jobs=1,
+                random_state=random_state,
+            ),
         ),
-        "random_forest": lambda: RandomForestRegressor(
-            max_depth=5,
-            n_estimators=50,
-            n_jobs=1,
-            random_state=random_state,
+        "extra_leaf5": lambda: imputed(
+            ExtraTreesRegressor(
+                n_estimators=200,
+                min_samples_leaf=5,
+                max_features=0.7,
+                n_jobs=1,
+                random_state=random_state,
+            ),
+        ),
+        "extra_leaf10": lambda: imputed(
+            ExtraTreesRegressor(
+                n_estimators=200,
+                min_samples_leaf=10,
+                max_features=0.7,
+                n_jobs=1,
+                random_state=random_state,
+            ),
+        ),
+        "forest_leaf5": lambda: imputed(
+            RandomForestRegressor(
+                n_estimators=200,
+                max_depth=8,
+                min_samples_leaf=5,
+                max_features=0.7,
+                n_jobs=1,
+                random_state=random_state,
+            ),
+        ),
+        "forest_leaf10": lambda: imputed(
+            RandomForestRegressor(
+                n_estimators=200,
+                min_samples_leaf=10,
+                max_features=0.7,
+                n_jobs=1,
+                random_state=random_state,
+            ),
+        ),
+        "hist_leaf10": lambda: imputed(
+            HistGradientBoostingRegressor(
+                learning_rate=0.05,
+                max_iter=200,
+                max_leaf_nodes=15,
+                min_samples_leaf=10,
+                l2_regularization=1.0,
+                early_stopping=False,
+                random_state=random_state,
+            ),
+        ),
+        "hist_leaf20": lambda: imputed(
+            HistGradientBoostingRegressor(
+                learning_rate=0.05,
+                max_iter=200,
+                max_leaf_nodes=7,
+                min_samples_leaf=20,
+                l2_regularization=3.0,
+                early_stopping=False,
+                random_state=random_state,
+            ),
         ),
     }
     if not names:

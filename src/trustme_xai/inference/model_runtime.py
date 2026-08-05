@@ -10,7 +10,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-MODEL_BUNDLE_SCHEMA_VERSION = 3
+MODEL_BUNDLE_SCHEMA_VERSION = 4
 MIN_SCORE = 0.0
 MAX_SCORE = 6.0
 
@@ -53,6 +53,34 @@ def numeric_features(
     ]
     if bad_columns:
         raise ValueError(f"model features are not finite: {bad_columns}")
+    return values
+
+
+def numeric_model_features(
+    table: pd.DataFrame,
+    feature_columns: list[str],
+) -> pd.DataFrame:
+    """Read numeric model features while keeping missing history
+
+    Args:
+        table: feature table
+        feature_columns: columns required by the model
+
+    Returns:
+        numeric model input with missing values unchanged
+    """
+    missing = [column for column in feature_columns if column not in table.columns]
+    if missing:
+        raise ValueError(f"missing model features: {missing}")
+    values = table[feature_columns].apply(pd.to_numeric, errors="raise").astype(float)
+    infinite = np.isinf(values.to_numpy(dtype=float)).any(axis=0)
+    bad_columns = [
+        column
+        for column, is_infinite in zip(feature_columns, infinite, strict=True)
+        if is_infinite
+    ]
+    if bad_columns:
+        raise ValueError(f"model features are infinite: {bad_columns}")
     return values
 
 
@@ -233,19 +261,14 @@ class TargetModel:
 
     target: str
     model_name: str
+    feature_set: str
+    feature_columns: list[str]
+    prediction_frame: str
     estimator: Any
     preprocessor: FeaturePreprocessor
     metrics: dict[str, int | float]
+    fallback_score: float
     score_range: tuple[float, float] | None = None
-
-    @property
-    def feature_columns(self) -> list[str]:
-        """Return ordered model feature names
-
-        Returns:
-            saved feature columns
-        """
-        return list(self.preprocessor.feature_columns)
 
     def predict(self, table: pd.DataFrame) -> pd.Series:
         """Predict one positive target
@@ -257,8 +280,19 @@ class TargetModel:
             pd.Series with clipped predictions
         """
         transformed = self.preprocessor.transform(table)
-        values = self.estimator.predict(transformed[self.feature_columns])
+        features = numeric_model_features(transformed, self.feature_columns)
+        values = self.estimator.predict(features)
         predictions = np.asarray(values, dtype=float).reshape(-1)
+        if self.prediction_frame == "personal_residual":
+            from trustme_xai.feature_pipeline.self_report_features import (
+                history_column,
+            )
+
+            baseline = pd.to_numeric(
+                table[history_column(self.target, "mean")],
+                errors="coerce",
+            ).fillna(self.fallback_score)
+            predictions += baseline.to_numpy(dtype=float)
         if not np.isfinite(predictions).all():
             raise ValueError("model predictions must be finite")
         if self.score_range is not None:
@@ -291,7 +325,7 @@ class ModelBundle:
         Returns:
             pd.DataFrame with one column per target
         """
-        numeric_features(table, self.feature_columns)
+        numeric_model_features(table, self.feature_columns)
         return pd.concat(
             [self.target_models[target].predict(table) for target in self.targets],
             axis=1,
@@ -342,20 +376,39 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
             raise TypeError(f"{target} is not a TargetModel")
         if model.target != target:
             raise ValueError(f"target model key does not match: {target}")
-        if model.feature_columns != bundle.feature_columns:
-            raise ValueError(f"{target} feature columns do not match the bundle")
+        if not model.feature_set:
+            raise ValueError(f"{target} has no feature set")
+        if not model.feature_columns:
+            raise ValueError(f"{target} has no feature columns")
+        if len(set(model.feature_columns)) != len(model.feature_columns):
+            raise ValueError(f"{target} feature columns must be unique")
+        if not set(model.feature_columns).issubset(bundle.feature_columns):
+            raise ValueError(f"{target} features are not in the bundle schema")
+        if not set(model.preprocessor.feature_columns).issubset(
+            bundle.feature_columns,
+        ):
+            raise ValueError(f"{target} preprocessor features are not in the bundle")
+        if model.prediction_frame not in {"absolute", "personal_residual"}:
+            raise ValueError(f"{target} has an unknown prediction frame")
+        if not np.isfinite(model.fallback_score):
+            raise ValueError(f"{target} has no finite fallback score")
         if not model.model_name:
             raise ValueError(f"{target} has no model name")
 
-    if bundle.feature_set == "production_25":
+    if bundle.feature_set == "production_25_history":
         from trustme_xai.contracts import MODEL_TARGETS
         from trustme_xai.feature_pipeline.production_features import (
             PRODUCTION_FEATURE_COLUMNS,
         )
+        from trustme_xai.feature_pipeline.self_report_features import (
+            all_history_columns,
+            history_column,
+        )
 
         if bundle.targets != MODEL_TARGETS:
             raise ValueError("production bundle targets do not match the contract")
-        if bundle.feature_columns != PRODUCTION_FEATURE_COLUMNS:
+        expected = [*PRODUCTION_FEATURE_COLUMNS, *all_history_columns()]
+        if bundle.feature_columns != expected:
             raise ValueError("production bundle features do not match the contract")
         model_version = bundle.metadata.get("model_version")
         if not isinstance(model_version, str) or not model_version:
@@ -367,6 +420,14 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
             for target in bundle.targets
         ):
             raise ValueError("production targets must use the 0..6 score range")
+        for target in bundle.targets:
+            model = bundle.target_models[target]
+            if not set(model.feature_columns).intersection(
+                PRODUCTION_FEATURE_COLUMNS,
+            ):
+                raise ValueError(f"{target} does not use ActivityWatch features")
+            if history_column(target, "mean") not in model.feature_columns:
+                raise ValueError(f"{target} does not use its past self-reports")
 
 
 def save_model_bundle(bundle: ModelBundle, path: str | Path) -> None:
@@ -382,7 +443,7 @@ def save_model_bundle(bundle: ModelBundle, path: str | Path) -> None:
     validate_model_bundle(bundle)
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(bundle, output)
+    joblib.dump(bundle, output, compress=3)
 
 
 def load_model_bundle(path: str | Path) -> ModelBundle:

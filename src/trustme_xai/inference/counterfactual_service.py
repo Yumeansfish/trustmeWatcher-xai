@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -22,6 +22,7 @@ def run_counterfactual(
     timestamp: datetime | str | pd.Timestamp,
     target: str,
     desired_score: float,
+    past_self_reports: Sequence[Mapping[str, object]] = (),
 ) -> dict[str, Any]:
     """Build one zero-sum counterfactual report
 
@@ -32,6 +33,7 @@ def run_counterfactual(
         timestamp: prediction timestamp
         target: target name
         desired_score: requested score
+        past_self_reports: earlier derived self-report scores
 
     Returns:
         counterfactual report
@@ -47,6 +49,7 @@ def run_counterfactual(
         activitywatch_buckets=buckets,
         user_id=user_id,
         as_of=ts,
+        past_self_reports=past_self_reports,
     )
 
     return find_counterfactual(

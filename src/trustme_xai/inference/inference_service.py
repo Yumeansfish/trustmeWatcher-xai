@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trustme_xai.contracts import ParsedActivityWatchEvents
+from trustme_xai.contracts import MODEL_TARGETS, ParsedActivityWatchEvents
 from trustme_xai.feature_pipeline.activitywatch_parser import (
     parse_activitywatch_events,
 )
@@ -22,6 +22,10 @@ from trustme_xai.feature_pipeline.production_features import (
     PRODUCTION_FEATURE_COLUMNS,
     PRODUCTION_WINDOW_MINUTES,
     build_production_features,
+)
+from trustme_xai.feature_pipeline.self_report_features import (
+    add_self_report_features,
+    all_history_columns,
 )
 from trustme_xai.inference.model_runtime import ModelBundle
 from trustme_xai.inference.prediction_report import build_prediction_report
@@ -59,11 +63,48 @@ def _request_times(
     )
 
 
+def _history_features(
+    user_id: str,
+    as_of: pd.Timestamp,
+    past_self_reports: Sequence[Mapping[str, object]],
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for report in past_self_reports:
+        if "timestamp" not in report:
+            raise ValueError("past self-report needs a timestamp")
+        timestamp = normalize_timestamp(report["timestamp"])
+        if timestamp >= as_of:
+            continue
+        rows.append(
+            {
+                "user_id": user_id,
+                "timestamp": timestamp,
+                "answer_source": "streamdeck",
+                **{target: report.get(target) for target in MODEL_TARGETS},
+            },
+        )
+
+    rows.append(
+        {
+            "user_id": user_id,
+            "timestamp": as_of,
+            "answer_source": "prediction",
+            **{target: None for target in MODEL_TARGETS},
+        },
+    )
+    history = add_self_report_features(pd.DataFrame(rows))
+    current = history.loc[history["timestamp"].eq(as_of)]
+    if len(current) != 1:
+        raise ValueError("self-report pipeline did not return one current row")
+    return current[["user_id", "timestamp", *all_history_columns()]]
+
+
 def build_current_features(
     events: ParsedActivityWatchEvents,
     user_id: str,
     as_of: datetime | str | pd.Timestamp,
     previous_questionnaire_times: Sequence[object] = (),
+    past_self_reports: Sequence[Mapping[str, object]] = (),
 ) -> pd.DataFrame:
     """Build one current production feature row
 
@@ -72,9 +113,10 @@ def build_current_features(
         user_id: participant identifier
         as_of: prediction timestamp
         previous_questionnaire_times: prior questionnaire times
+        past_self_reports: earlier derived self-report scores
 
     Returns:
-        one pd.DataFrame row with production_25 features
+        one pd.DataFrame row with activity and self-report features
     """
     normalized_user_id = user_id.strip()
     if not normalized_user_id:
@@ -84,10 +126,15 @@ def build_current_features(
     if not _has_current_activity(clipped, current_time):
         raise ValueError("no window or web activity in the current 60-minute window")
 
+    report_times = [
+        report["timestamp"]
+        for report in past_self_reports
+        if "timestamp" in report
+    ]
     requests = _request_times(
         normalized_user_id,
         current_time,
-        previous_questionnaire_times,
+        [*previous_questionnaire_times, *report_times],
     )
     features = build_production_features(clipped, requests)
     current = features.loc[
@@ -96,9 +143,25 @@ def build_current_features(
     ].copy()
     if len(current) != 1:
         raise ValueError("feature pipeline did not return one current row")
-    expected = ["user_id", "timestamp", *PRODUCTION_FEATURE_COLUMNS]
+    history = _history_features(
+        normalized_user_id,
+        current_time,
+        past_self_reports,
+    )
+    current = current.merge(
+        history,
+        on=["user_id", "timestamp"],
+        how="left",
+        validate="one_to_one",
+    )
+    expected = [
+        "user_id",
+        "timestamp",
+        *PRODUCTION_FEATURE_COLUMNS,
+        *all_history_columns(),
+    ]
     if list(current.columns) != expected:
-        raise ValueError("runtime feature schema does not match production_25")
+        raise ValueError("runtime feature schema does not match the model")
     return current.reset_index(drop=True)
 
 
@@ -143,6 +206,7 @@ def build_current_features_from_buckets(
     user_id: str,
     as_of: datetime | str | pd.Timestamp,
     previous_questionnaire_times: Sequence[object] = (),
+    past_self_reports: Sequence[Mapping[str, object]] = (),
 ) -> pd.DataFrame:
     """Build one production row from raw ActivityWatch buckets
 
@@ -151,9 +215,10 @@ def build_current_features_from_buckets(
         user_id: participant identifier
         as_of: prediction timestamp
         previous_questionnaire_times: prior questionnaire times
+        past_self_reports: earlier derived self-report scores
 
     Returns:
-        one pd.DataFrame row with production_25 features
+        one pd.DataFrame row with activity and self-report features
     """
     normalized_user_id = user_id.strip()
     if not normalized_user_id:
@@ -169,6 +234,7 @@ def build_current_features_from_buckets(
         normalized_user_id,
         current_time,
         previous_questionnaire_times,
+        past_self_reports,
     )
 
 
@@ -178,6 +244,7 @@ def run_inference(
     user_id: str,
     as_of: datetime | str | pd.Timestamp,
     previous_questionnaire_times: Sequence[object] | None = None,
+    past_self_reports: Sequence[Mapping[str, object]] | None = None,
 ) -> dict[str, Any]:
     """Run the complete production inference path
 
@@ -187,6 +254,7 @@ def run_inference(
         user_id: participant identifier
         as_of: prediction timestamp
         previous_questionnaire_times: prior questionnaire times
+        past_self_reports: earlier derived self-report scores
 
     Returns:
         semantic seven-target prediction report
@@ -197,6 +265,7 @@ def run_inference(
         user_id,
         current_time,
         previous_questionnaire_times or (),
+        past_self_reports or (),
     )
     normalized_user_id = user_id.strip()
     return build_prediction_report(
