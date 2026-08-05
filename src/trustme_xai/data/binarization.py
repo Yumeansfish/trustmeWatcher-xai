@@ -1,4 +1,4 @@
-"""Binarize continuous psychological targets using hard and participant median thresholds"""
+"""Binarize continuous targets with fixed and participant thresholds"""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Define the data exchanged by the runtime inference pipeline"""
+"""Define data exchanged by the runtime inference pipeline"""
 
 from __future__ import annotations
 
@@ -8,21 +8,36 @@ import pandas as pd
 
 LOCAL_TIMEZONE = "Europe/Zurich"
 
-QUESTION_TARGETS = {
-    "q1": "q1_feelings",
-    "q2": "q2_intensity",
-    "q3": "q3_tiredness",
-    "q4": "q4_enthusiasm",
-    "q5": "q5_immersion",
-    "q6": "q6_comfort",
-    "q7": "q7_social",
-    "q8": "q8_stress",
-    "q9": "q9_productivity",
-}
-QUESTION_IDS = list(QUESTION_TARGETS)
-TARGET_COLUMNS = list(QUESTION_TARGETS.values())
-TARGET_QUESTIONS = {
-    target: question_id for question_id, target in QUESTION_TARGETS.items()
+RAW_QUESTION_COLUMNS = [
+    "q1_feelings",
+    "q2_intensity",
+    "q3_tiredness",
+    "q4_enthusiasm",
+    "q5_immersion",
+    "q6_comfort",
+    "q7_social",
+    "q8_stress",
+    "q9_productivity",
+]
+
+MODEL_TARGETS = [
+    "mood_valence",
+    "arousal",
+    "restfulness",
+    "stress_management",
+    "productivity",
+    "engagement",
+    "overall_wellbeing",
+]
+
+TARGET_TITLES = {
+    "mood_valence": "Mood valence",
+    "arousal": "Arousal",
+    "restfulness": "Restfulness",
+    "stress_management": "Stress management",
+    "productivity": "Productivity",
+    "engagement": "Engagement",
+    "overall_wellbeing": "Overall wellbeing",
 }
 
 BASE_COLUMNS = [
@@ -68,7 +83,7 @@ INPUT_COLUMNS = [
 
 
 class ParsedActivityWatchEvents(NamedTuple):
-    """Store parsed activitywatch event tables"""
+    """Store parsed ActivityWatch event tables"""
 
     window: pd.DataFrame
     web: pd.DataFrame

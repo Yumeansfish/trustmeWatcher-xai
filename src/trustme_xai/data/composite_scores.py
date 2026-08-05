@@ -1,22 +1,15 @@
-"""Normalize survey answers and compute composite psychological scores"""
+"""Derive positive model targets from questionnaire answers"""
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
-COMPOSITE_TARGETS = [
-    "stress",
-    "fatigue",
-    "valence",
-    "arousal",
-    "productivity",
-    "engagement",
-    "overall_wellbeing",
-]
+from trustme_xai.contracts import MODEL_TARGETS
 
+COMPOSITE_TARGETS = list(MODEL_TARGETS)
 MAX_SCORE = 6.0
 
-# columns required by normalize_answers
 _RAW_COLUMNS = [
     "q1_feelings",
     "q2_intensity",
@@ -26,69 +19,100 @@ _RAW_COLUMNS = [
     "q8_stress",
     "q9_productivity",
 ]
-
-# columns required by combine_state_averages
 _ENGAGEMENT_COLUMNS = ["q4_enthusiasm", "q5_immersion"]
-_WELLBEING_COLUMNS = ["stress", "engagement", "valence"]
+_WELLBEING_COLUMNS = [
+    "mood_valence",
+    "engagement",
+    "stress_management",
+]
+
+_RAW_RANGES = {
+    "q1_feelings": (-3.0, 3.0),
+    "q2_intensity": (0.0, 6.0),
+    "q3_tiredness": (0.0, 6.0),
+    "q4_enthusiasm": (0.0, 6.0),
+    "q5_immersion": (0.0, 6.0),
+    "q8_stress": (0.0, 6.0),
+    "q9_productivity": (0.0, 6.0),
+}
 
 
-def normalize_answers(answers: pd.DataFrame) -> pd.DataFrame:
-    """Convert raw q1-q9 survey items to a standardized 0-6 scale
-
-    Shifts the bipolar q1_feelings scale from [-3, +3] to [0, 6].
-    Reverses q8_stress and q3_tiredness so high values mean low
-    stress and low fatigue respectively.
-
-    Args:
-        answers: raw survey pd.DataFrame with q1-q9 columns
-
-    Returns:
-        pd.DataFrame with five normalized target columns added
-    """
+def _validated_answers(answers: pd.DataFrame) -> pd.DataFrame:
     missing = sorted(set(_RAW_COLUMNS) - set(answers.columns))
     if missing:
         raise ValueError(f"missing required columns: {missing}")
 
-    df = answers.copy()
+    result = answers.copy()
+    for column in _RAW_COLUMNS:
+        result[column] = pd.to_numeric(result[column], errors="raise")
+        finite = result[column].dropna().to_numpy(dtype=float)
+        if not np.isfinite(finite).all():
+            raise ValueError(f"{column} contains an infinite value")
+        minimum, maximum = _RAW_RANGES[column]
+        if ((finite < minimum) | (finite > maximum)).any():
+            raise ValueError(
+                f"{column} contains values outside {minimum}..{maximum}",
+            )
+    return result
 
-    # reverse negative states so high score = good state
-    df["stress"] = MAX_SCORE - df["q8_stress"].to_numpy()
-    df["fatigue"] = MAX_SCORE - df["q3_tiredness"].to_numpy()
 
-    # shift bipolar scale (-3 to +3) to match the 0-6 range
-    df["valence"] = df["q1_feelings"].to_numpy() + 3.0
+def normalize_answers(answers: pd.DataFrame) -> pd.DataFrame:
+    """Derive the five direct positive targets
 
-    # direct mappings already on the 0-6 scale
-    df["arousal"] = df["q2_intensity"]
-    df["productivity"] = df["q9_productivity"]
+    Args:
+        answers: pd.DataFrame with raw questionnaire answers
 
-    return df
+    Returns:
+        pd.DataFrame with five positive targets
+    """
+    result = _validated_answers(answers)
+    result["mood_valence"] = result["q1_feelings"] + 3.0
+    result["arousal"] = result["q2_intensity"]
+    result["restfulness"] = MAX_SCORE - result["q3_tiredness"]
+    result["stress_management"] = MAX_SCORE - result["q8_stress"]
+    result["productivity"] = result["q9_productivity"]
+    return result
 
 
 def combine_state_averages(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute engagement and overall_wellbeing from normalized columns
-
-    Engagement averages q4_enthusiasm and q5_immersion.
-    Overall wellbeing averages stress, engagement, and valence.
-    Excludes fatigue and arousal to maximize internal consistency.
+    """Derive engagement and overall wellbeing
 
     Args:
-        df: pd.DataFrame with normalized target columns from normalize_answers
+        df: pd.DataFrame with direct positive targets
 
     Returns:
-        pd.DataFrame with engagement and overall_wellbeing columns added
+        pd.DataFrame with both mean targets
     """
     missing_eng = sorted(set(_ENGAGEMENT_COLUMNS) - set(df.columns))
     if missing_eng:
         raise ValueError(f"missing engagement columns: {missing_eng}")
 
     result = df.copy()
-    result["engagement"] = result[_ENGAGEMENT_COLUMNS].mean(axis=1)
-
+    result["engagement"] = result[_ENGAGEMENT_COLUMNS].mean(
+        axis=1,
+        skipna=False,
+    )
     missing_wb = sorted(set(_WELLBEING_COLUMNS) - set(result.columns))
     if missing_wb:
         raise ValueError(f"missing wellbeing columns: {missing_wb}")
+    result["overall_wellbeing"] = result[_WELLBEING_COLUMNS].mean(
+        axis=1,
+        skipna=False,
+    )
+    return result
 
-    result["overall_wellbeing"] = result[_WELLBEING_COLUMNS].mean(axis=1)
 
+def derive_model_targets(answers: pd.DataFrame) -> pd.DataFrame:
+    """Derive all seven model targets
+
+    Args:
+        answers: pd.DataFrame with raw questionnaire answers
+
+    Returns:
+        pd.DataFrame with the seven positive targets
+    """
+    result = combine_state_averages(normalize_answers(answers))
+    unexpected = [target for target in MODEL_TARGETS if target not in result]
+    if unexpected:
+        raise RuntimeError(f"failed to derive model targets: {unexpected}")
     return result
