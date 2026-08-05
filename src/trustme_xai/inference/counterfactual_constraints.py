@@ -1,4 +1,4 @@
-"""Physical simplex constraints and feature taxonomy for Zero-Sum counterfactual recourse"""
+"""Enforce the zero-sum counterfactual constraints"""
 
 from __future__ import annotations
 
@@ -79,7 +79,9 @@ def check_time_budget(
 
     new_active_sum = 0.0
     for cat in ACTIONABLE_CATEGORIES:
-        new_val = float(feature_row.get(cat, 0.0)) + float(proposed_deltas.get(cat, 0.0))
+        new_val = float(feature_row.get(cat, 0.0)) + float(
+            proposed_deltas.get(cat, 0.0),
+        )
         if new_val < -TOLERANCE:
             return False
         new_active_sum += new_val
@@ -92,7 +94,7 @@ def validate_counterfactual(
     original_row: Mapping[str, Any],
     modified_row: Mapping[str, Any],
 ) -> None:
-    """Fail-fast guard clause validating physical invariants between original and counterfactual
+    """Validate physical counterfactual constraints
 
     Args:
         original_row: baseline feature mapping
@@ -102,7 +104,12 @@ def validate_counterfactual(
         ValueError: if any physical invariant is violated
     """
     for f in IMMUTABLE_FEATURES:
-        if f in original_row and f in modified_row and original_row[f] != modified_row[f]:
+        changed = (
+            f in original_row
+            and f in modified_row
+            and original_row[f] != modified_row[f]
+        )
+        if changed:
             raise ValueError(f"immutable feature modified: {f}")
 
     deltas = {
@@ -110,7 +117,10 @@ def validate_counterfactual(
         for cat in ACTIONABLE_CATEGORIES
     }
     if abs(sum(deltas.values())) > TOLERANCE:
-        raise ValueError(f"zero-sum conservation invariant violated: sum(delta) = {sum(deltas.values())}")
+        total = sum(deltas.values())
+        raise ValueError(
+            f"zero-sum conservation invariant violated: sum(delta) = {total}",
+        )
 
     for cat in ACTIONABLE_CATEGORIES:
         if float(modified_row.get(cat, 0.0)) < -TOLERANCE:

@@ -1,37 +1,40 @@
-"""Production counterfactual service bridging raw ActivityWatch buckets to Zero-Sum engine"""
+"""Build counterfactual reports from ActivityWatch buckets"""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
 import pandas as pd
 
 from trustme_xai.inference.counterfactual_engine import find_counterfactual
-from trustme_xai.inference.ensemble_bundle import EnsembleBundle
-from trustme_xai.inference.inference_service import _build_feature_row_from_buckets
+from trustme_xai.inference.inference_service import (
+    build_current_features_from_buckets,
+)
+from trustme_xai.inference.model_runtime import ModelBundle
 
 
 def run_counterfactual(
-    bundle: EnsembleBundle,
-    buckets: dict[str, dict[str, Any]],
+    bundle: ModelBundle,
+    buckets: Mapping[str, Mapping[str, object]],
     user_id: str,
     timestamp: datetime | str | pd.Timestamp,
     target: str,
     desired_score: float,
 ) -> dict[str, Any]:
-    """Parse ActivityWatch buckets, run Zero-Sum Swap engine, and return counterfactual report
+    """Build one zero-sum counterfactual report
 
     Args:
-        bundle: loaded 5-block EnsembleBundle instance
-        buckets: raw ActivityWatch bucket dictionary
-        user_id: user identifier string
+        bundle: fitted production model bundle
+        buckets: raw ActivityWatch buckets
+        user_id: participant identifier
         timestamp: prediction timestamp
-        target: target metric identifier string (e.g. "productivity")
-        desired_score: desired target continuous score (e.g. 4.5)
+        target: target name
+        desired_score: requested score
 
     Returns:
-        counterfactual report dictionary
+        counterfactual report
     """
     if not user_id.strip():
         raise ValueError("user_id must not be blank")
@@ -40,9 +43,7 @@ def run_counterfactual(
     if pd.isna(ts):
         raise ValueError("timestamp must be a valid timestamp")
 
-    # Build 1-row feature DataFrame from raw buckets
-    feature_row = _build_feature_row_from_buckets(
-        bundle=bundle,
+    feature_row = build_current_features_from_buckets(
         activitywatch_buckets=buckets,
         user_id=user_id,
         as_of=ts,
