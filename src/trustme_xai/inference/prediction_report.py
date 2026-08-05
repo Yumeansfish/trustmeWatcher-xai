@@ -1,4 +1,4 @@
-"""Live prediction report generation from fitted production model bundle"""
+"""Build the semantic production prediction report"""
 
 from __future__ import annotations
 
@@ -7,56 +7,62 @@ from typing import Any
 
 import pandas as pd
 
-from trustme_xai.inference.ensemble_bundle import EnsembleBundle, TargetMetric
+from trustme_xai.contracts import TARGET_TITLES
+from trustme_xai.inference.model_runtime import ModelBundle
+
+PREDICTION_REPORT_SCHEMA_VERSION = 3
 
 
-def create_prediction_report(
-    bundle: EnsembleBundle,
-    feature_row: pd.DataFrame,
+def build_prediction_report(
+    bundle: ModelBundle,
+    current_features: pd.DataFrame,
+    participant_id: str,
+    as_of: str | pd.Timestamp,
 ) -> dict[str, Any]:
-    """Generate live prediction report dictionary from fitted model bundle
+    """Build one report with seven positive target predictions
 
     Args:
-        bundle: loaded EnsembleBundle instance
-        feature_row: single-row pd.DataFrame containing current model features
+        bundle: fitted production model bundle
+        current_features: one current feature row
+        participant_id: participant linked to the row
+        as_of: end of the prediction window
 
     Returns:
-        dict containing participant_id, prediction_timestamp, and model predictions
+        semantic production prediction report
     """
+    if len(current_features) != 1:
+        raise ValueError("current_features must contain exactly one row")
+    if not {"user_id", "timestamp"}.issubset(current_features.columns):
+        raise ValueError("current_features must contain user_id and timestamp")
+    row = current_features.iloc[0]
+    if str(row["user_id"]) != participant_id:
+        raise ValueError("participant_id does not match the feature row")
+    if pd.Timestamp(row["timestamp"]) != pd.Timestamp(as_of):
+        raise ValueError("as_of does not match the feature row")
 
-    if len(feature_row) != 1:
-        raise ValueError(f"feature_row must contain exactly 1 row, got {len(feature_row)}")
-
-    if "user_id" not in feature_row.columns or "timestamp" not in feature_row.columns:
-        raise ValueError("feature_row must contain user_id and timestamp columns")
-
-    row = feature_row.iloc[0]
-    participant_id = str(row["user_id"])
-    prediction_timestamp = pd.Timestamp(row["timestamp"]).isoformat()
-
-    predictions: list[dict[str, Any]] = []
-
+    prediction_table = bundle.predict(current_features)
+    predictions = []
     for target in bundle.targets:
-        target_model = bundle.target_models[target]
-        # Average live predictions across the 5 block models: y_hat = 1/5 * sum(f_k(x))
-        avg_score = target_model.predict(feature_row)
-
+        model = bundle.target_models[target]
         predictions.append(
             {
-                "target": str(target),
-                "predicted_score": round(float(avg_score), 4),
-                "model_family": str(target_model.family),
-                "avg_val_mse": round(float(target_model.avg_val_mse), 4),
+                "target": target,
+                "title": TARGET_TITLES[target],
+                "prediction": float(prediction_table[target].iloc[0]),
+                "model": model.model_name,
+                "validation_mse": float(model.metrics["validation_mse"]),
+                "test_mse": float(model.metrics["test_mse"]),
             },
         )
 
     generated_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
     return {
-        "participant_id": participant_id,
-        "prediction_timestamp": prediction_timestamp,
+        "schema_version": PREDICTION_REPORT_SCHEMA_VERSION,
         "generated_at": generated_at,
-        "model_version": bundle.metadata.get("model_version", "production_purged_v1"),
-
+        "participant_id": participant_id,
+        "prediction_timestamp": pd.Timestamp(as_of).isoformat(),
+        "window_minutes": 60,
+        "model_version": bundle.metadata["model_version"],
+        "normalization": bundle.metadata["normalization"],
         "predictions": predictions,
     }

@@ -1,114 +1,207 @@
-"""Production inference service bridging ActivityWatch buckets to live prediction reports"""
+"""Run production inference from raw ActivityWatch buckets"""
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
-from trustme_xai.inference.ensemble_bundle import EnsembleBundle
-from trustme_xai.inference.prediction_report import create_prediction_report
+from trustme_xai.contracts import ParsedActivityWatchEvents
+from trustme_xai.feature_pipeline.activitywatch_parser import (
+    parse_activitywatch_events,
+)
+from trustme_xai.feature_pipeline.event_contract import (
+    clip_events_at,
+    normalize_timestamp,
+    prepare_inference_events,
+)
+from trustme_xai.feature_pipeline.production_features import (
+    PRODUCTION_FEATURE_COLUMNS,
+    PRODUCTION_WINDOW_MINUTES,
+    build_production_features,
+)
+from trustme_xai.inference.model_runtime import ModelBundle
+from trustme_xai.inference.prediction_report import build_prediction_report
+
+
+def _has_current_activity(
+    events: ParsedActivityWatchEvents,
+    as_of: pd.Timestamp,
+) -> bool:
+    start = as_of - pd.Timedelta(minutes=PRODUCTION_WINDOW_MINUTES)
+    return any(
+        not table.empty
+        and bool(
+            ((table["timestamp"] < as_of) & (table["event_end"] > start)).any(),
+        )
+        for table in (events.window, events.web)
+    )
+
+
+def _request_times(
+    user_id: str,
+    as_of: pd.Timestamp,
+    previous_questionnaire_times: Sequence[object],
+) -> pd.DataFrame:
+    normalized = {
+        normalize_timestamp(value)
+        for value in previous_questionnaire_times
+    }
+    previous = sorted(value for value in normalized if value < as_of)[-3:]
+    return pd.DataFrame(
+        {
+            "user_id": [user_id] * (len(previous) + 1),
+            "timestamp": [*previous, as_of],
+        },
+    )
+
+
+def build_current_features(
+    events: ParsedActivityWatchEvents,
+    user_id: str,
+    as_of: datetime | str | pd.Timestamp,
+    previous_questionnaire_times: Sequence[object] = (),
+) -> pd.DataFrame:
+    """Build one current production feature row
+
+    Args:
+        events: parsed ActivityWatch event tables
+        user_id: participant identifier
+        as_of: prediction timestamp
+        previous_questionnaire_times: prior questionnaire times
+
+    Returns:
+        one pd.DataFrame row with production_25 features
+    """
+    normalized_user_id = user_id.strip()
+    if not normalized_user_id:
+        raise ValueError("user_id must not be blank")
+    current_time = normalize_timestamp(as_of)
+    clipped = clip_events_at(prepare_inference_events(events), current_time)
+    if not _has_current_activity(clipped, current_time):
+        raise ValueError("no window or web activity in the current 60-minute window")
+
+    requests = _request_times(
+        normalized_user_id,
+        current_time,
+        previous_questionnaire_times,
+    )
+    features = build_production_features(clipped, requests)
+    current = features.loc[
+        features["user_id"].astype(str).eq(normalized_user_id)
+        & features["timestamp"].eq(current_time)
+    ].copy()
+    if len(current) != 1:
+        raise ValueError("feature pipeline did not return one current row")
+    expected = ["user_id", "timestamp", *PRODUCTION_FEATURE_COLUMNS]
+    if list(current.columns) != expected:
+        raise ValueError("runtime feature schema does not match production_25")
+    return current.reset_index(drop=True)
+
+
+def predict_current(
+    bundle: ModelBundle,
+    current_features: pd.DataFrame,
+) -> dict[str, float]:
+    """Predict all saved targets for one feature row
+
+    Args:
+        bundle: fitted production model bundle
+        current_features: one current feature row
+
+    Returns:
+        target names mapped to finite predictions
+    """
+    if len(current_features) != 1:
+        raise ValueError("current_features must contain exactly one row")
+    predictions = bundle.predict(current_features)
+    values = predictions.iloc[0].to_dict()
+    result = {target: float(values[target]) for target in bundle.targets}
+    if not np.isfinite(list(result.values())).all():
+        raise ValueError("runtime predictions must be finite")
+    return result
+
+
+def _validate_bucket_sources(
+    activitywatch_buckets: Mapping[str, Mapping[str, object]],
+) -> None:
+    source_types = {
+        str(bucket.get("type") or "")
+        for bucket in activitywatch_buckets.values()
+    }
+    if not source_types.intersection({"currentwindow", "web.tab.current"}):
+        raise ValueError("ActivityWatch window or web bucket is required")
+    if "os.hid.input" not in source_types:
+        raise ValueError("ActivityWatch input bucket is required")
+
+
+def build_current_features_from_buckets(
+    activitywatch_buckets: Mapping[str, Mapping[str, object]],
+    user_id: str,
+    as_of: datetime | str | pd.Timestamp,
+    previous_questionnaire_times: Sequence[object] = (),
+) -> pd.DataFrame:
+    """Build one production row from raw ActivityWatch buckets
+
+    Args:
+        activitywatch_buckets: raw ActivityWatch buckets
+        user_id: participant identifier
+        as_of: prediction timestamp
+        previous_questionnaire_times: prior questionnaire times
+
+    Returns:
+        one pd.DataFrame row with production_25 features
+    """
+    normalized_user_id = user_id.strip()
+    if not normalized_user_id:
+        raise ValueError("user_id must not be blank")
+    _validate_bucket_sources(activitywatch_buckets)
+    current_time = normalize_timestamp(as_of)
+    events = parse_activitywatch_events(
+        activitywatch_buckets,
+        normalized_user_id,
+    )
+    return build_current_features(
+        events,
+        normalized_user_id,
+        current_time,
+        previous_questionnaire_times,
+    )
 
 
 def run_inference(
-    bundle: EnsembleBundle,
-    activitywatch_buckets: dict[str, dict[str, Any]],
+    bundle: ModelBundle,
+    activitywatch_buckets: Mapping[str, Mapping[str, object]],
     user_id: str,
     as_of: datetime | str | pd.Timestamp,
-    previous_questionnaire_times: list[datetime] | None = None,
+    previous_questionnaire_times: Sequence[object] | None = None,
 ) -> dict[str, Any]:
-    """Execute live inference pipeline from ActivityWatch buckets to prediction report
+    """Run the complete production inference path
 
     Args:
-        bundle: loaded EnsembleBundle instance
-        activitywatch_buckets: raw ActivityWatch bucket dictionary
-        user_id: user identifier
+        bundle: fitted production model bundle
+        activitywatch_buckets: raw ActivityWatch buckets
+        user_id: participant identifier
         as_of: prediction timestamp
-        previous_questionnaire_times: optional list of previous questionnaire timestamps
+        previous_questionnaire_times: prior questionnaire times
 
     Returns:
-        prediction report dictionary
+        semantic seven-target prediction report
     """
-    if not user_id.strip():
-        raise ValueError("user_id must not be blank")
-
-    ts = pd.Timestamp(as_of)
-    if pd.isna(ts):
-        raise ValueError("as_of must be a valid timestamp")
-
-    # Build 1-row feature DataFrame
-    feature_row = _build_feature_row_from_buckets(
-        bundle=bundle,
-        activitywatch_buckets=activitywatch_buckets,
-        user_id=user_id,
-        as_of=ts,
+    current_time = normalize_timestamp(as_of)
+    current = build_current_features_from_buckets(
+        activitywatch_buckets,
+        user_id,
+        current_time,
+        previous_questionnaire_times or (),
     )
-
-    return create_prediction_report(bundle, feature_row)
-
-
-def _build_feature_row_from_buckets(
-    bundle: EnsembleBundle,
-    activitywatch_buckets: dict[str, dict[str, Any]],
-    user_id: str,
-    as_of: pd.Timestamp,
-) -> pd.DataFrame:
-    """Extract model feature row from raw ActivityWatch buckets"""
-    row: dict[str, Any] = {
-        "user_id": user_id,
-        "timestamp": as_of,
-        "hour_of_day": as_of.hour + as_of.minute / 60.0,
-        "is_morning": int(5 <= as_of.hour < 12),
-        "is_afternoon": int(12 <= as_of.hour < 18),
-        "sleep_hours": 7.5,
-        "minutes_since_prev1_window": 60.0,
-    }
-
-    # Aggregate category durations from window buckets
-    cat_durations: dict[str, float] = {
-        "time_development": 0.0,
-        "time_writing": 0.0,
-        "time_communication": 0.0,
-        "time_personal_distraction": 0.0,
-        "time_media": 0.0,
-        "time_research": 0.0,
-    }
-
-    for bucket_id, bucket in activitywatch_buckets.items():
-        events = bucket.get("events", [])
-        for event in events:
-            data = event.get("data", {})
-            cat = str(data.get("category", "")).lower()
-            duration_s = float(event.get("duration", 0.0))
-            minutes = duration_s / 60.0
-
-            if "dev" in cat or "code" in cat:
-                cat_durations["time_development"] += minutes
-            elif "write" in cat or "doc" in cat:
-                cat_durations["time_writing"] += minutes
-            elif "comm" in cat or "slack" in cat or "mail" in cat:
-                cat_durations["time_communication"] += minutes
-            elif "social" in cat or "game" in cat or "distraction" in cat:
-                cat_durations["time_personal_distraction"] += minutes
-            elif "media" in cat or "video" in cat:
-                cat_durations["time_media"] += minutes
-            elif "research" in cat or "read" in cat or "browser" in cat:
-                cat_durations["time_research"] += minutes
-
-    row.update(cat_durations)
-
-    # Derived focus & pacing metrics
-    total_active = sum(cat_durations.values())
-    row["mean_focus_block_minutes"] = round(total_active / max(1, len(cat_durations)), 2)
-    row["short_fragment_count_2m"] = 2.0
-    row["app_switch_count"] = 5.0
-    row["input_load"] = 120.0
-
-    # Ensure all required bundle feature columns exist
-    for col in bundle.feature_columns:
-        if col not in row:
-            row[col] = 0.0
-
-    return pd.DataFrame([row])
-
+    normalized_user_id = user_id.strip()
+    return build_prediction_report(
+        bundle,
+        current,
+        normalized_user_id,
+        current_time,
+    )

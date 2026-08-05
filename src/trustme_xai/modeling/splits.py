@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 import math
 from typing import Literal, cast
 
@@ -10,8 +9,6 @@ import numpy as np
 import pandas as pd
 
 SplitName = Literal["train", "validation", "test", "excluded", "gap"]
-NUM_BLOCKS = 5
-PURGE_BUFFER_DAYS = 1
 
 
 def _split_counts(total: int, train_ratio: float) -> tuple[int, int, int]:
@@ -26,156 +23,76 @@ def _split_counts(total: int, train_ratio: float) -> tuple[int, int, int]:
     return train, validation, test
 
 
-def within_user_split(
+def production_day_purged_within_user_split(
     table: pd.DataFrame,
-    train_ratio: float = 0.8,
 ) -> pd.Series:
-    """Split each participant in chronological day blocks
+    """Build the locked chronological production split
+
+    The split targets 80 percent training rows. It targets 10 percent
+    validation rows. One whole participant day is purged at each boundary.
 
     Args:
-        table: rows containing user_id and timestamp
-        train_ratio: share of participant days used for training
+        table: rows with user_id and timestamp
 
     Returns:
         pd.Series with one split name per row
     """
     if not {"user_id", "timestamp"}.issubset(table.columns):
         raise ValueError("table must contain user_id and timestamp")
-    if not 0 < train_ratio < 1:
-        raise ValueError("train_ratio must be between zero and one")
 
-    timestamps = pd.to_datetime(table["timestamp"], errors="raise")
     work = table[["user_id"]].copy()
-    work["timestamp"] = timestamps
+    work["timestamp"] = pd.to_datetime(table["timestamp"], errors="raise")
     split = pd.Series("excluded", index=table.index, dtype="object")
+    target_shares = np.asarray([0.8, 0.1, 0.1], dtype=float)
 
-    for _, rows in work.groupby("user_id", sort=True):
+    for user_id, rows in work.groupby("user_id", sort=True):
         ordered = rows.sort_values("timestamp", kind="stable")
         dates = list(ordered["timestamp"].dt.date.drop_duplicates())
-        train_count, val_count, _ = _split_counts(len(dates), train_ratio)
-        if train_count == 0:
-            continue
+        if len(dates) < 5:
+            raise ValueError(f"{user_id} needs at least five questionnaire days")
+        rows_per_day = ordered["timestamp"].dt.date.value_counts()
+        choices: list[tuple[float, int, int]] = []
+        for train_end in range(1, len(dates) - 3):
+            for second_gap in range(train_end + 2, len(dates) - 1):
+                counts = np.asarray(
+                    [
+                        sum(rows_per_day[day] for day in dates[:train_end]),
+                        sum(
+                            rows_per_day[day]
+                            for day in dates[train_end + 1 : second_gap]
+                        ),
+                        sum(rows_per_day[day] for day in dates[second_gap + 1 :]),
+                    ],
+                    dtype=float,
+                )
+                shares = counts / counts.sum()
+                score = float(np.square(shares - target_shares).sum())
+                choices.append((score, train_end, second_gap))
 
-        val_end = train_count + val_count
-        by_date: dict[object, SplitName] = {d: "train" for d in dates[:train_count]}
-        by_date.update({d: "validation" for d in dates[train_count:val_end]})
-        by_date.update({d: "test" for d in dates[val_end:]})
-        split.loc[ordered.index] = ordered["timestamp"].dt.date.map(by_date)
-
-    return cast(pd.Series, split)
-
-
-def day_purged_within_user_split(
-    table: pd.DataFrame,
-    train_ratio: float = 0.5,
-    validation_ratio: float = 0.2,
-    gap_days: int = 1,
-) -> pd.Series:
-    """Split participant days into chronological train, validation, and test with purging gaps
-
-    Args:
-        table: rows containing user_id and timestamp
-        train_ratio: ratio of participant days used for training
-        validation_ratio: ratio of participant days used for validation
-        gap_days: number of gap days between splits for purging
-
-    Returns:
-        pd.Series with split name for each row
-    """
-    if not {"user_id", "timestamp"}.issubset(table.columns):
-        raise ValueError("table must contain user_id and timestamp")
-
-    timestamps = pd.to_datetime(table["timestamp"], errors="raise")
-    work = table[["user_id"]].copy()
-    work["timestamp"] = timestamps
-    split = pd.Series("excluded", index=table.index, dtype="object")
-
-    for _, rows in work.groupby("user_id", sort=True):
-        ordered = rows.sort_values("timestamp", kind="stable")
-        dates = list(ordered["timestamp"].dt.date.drop_duplicates())
-        n_dates = len(dates)
-        if n_dates == 0:
-            continue
-
-        tr_cnt = max(1, int(math.floor(n_dates * train_ratio)))
-        val_cnt = max(1, int(math.floor(n_dates * validation_ratio)))
-
-        by_date: dict[object, SplitName] = {}
-        tr_end = min(tr_cnt, n_dates)
-        for d in dates[:tr_end]:
-            by_date[d] = "train"
-
-        gap1_end = min(tr_end + gap_days, n_dates)
-        for d in dates[tr_end:gap1_end]:
-            by_date[d] = "gap"
-
-        val_end = min(gap1_end + val_cnt, n_dates)
-        for d in dates[gap1_end:val_end]:
-            by_date[d] = "validation"
-
-        gap2_end = min(val_end + gap_days, n_dates)
-        for d in dates[val_end:gap2_end]:
-            by_date[d] = "gap"
-
-        for d in dates[gap2_end:]:
-            by_date[d] = "test"
-
-        split.loc[ordered.index] = ordered["timestamp"].dt.date.map(by_date)
-
-    return cast(pd.Series, split)
-
-
-def split_purged_blocks(
-    df: pd.DataFrame,
-    num_blocks: int = NUM_BLOCKS,
-    purge_buffer_days: int = PURGE_BUFFER_DAYS,
-) -> Iterator[tuple[np.ndarray, np.ndarray]]:
-    """Yield train_idx and val_idx array tuples for 5 blocks with temporal purging buffers
-
-    Args:
-        df: pd.DataFrame containing user_id and timestamp columns
-        num_blocks: number of cross-validation blocks
-        purge_buffer_days: number of days to purge around validation blocks
-
-    Yields:
-        tuples of (train_indices, val_indices) numpy arrays
-    """
-    if not {"user_id", "timestamp"}.issubset(df.columns):
-        raise ValueError("df must contain user_id and timestamp columns")
-
-    timestamps = pd.to_datetime(df["timestamp"])
-    dates = timestamps.dt.date.to_numpy()
-    all_indices = np.arange(len(df))
-    block_assignments = np.full(len(df), -1, dtype=int)
-
-    for _, user_rows in df.groupby("user_id", sort=True):
-        u_indices = user_rows.index.to_numpy()
-        u_dates = np.sort(timestamps.iloc[u_indices].dt.date.unique())
-        if len(u_dates) == 0:
-            continue
-
-        d_to_block = {
-            d: b_id
-            for b_id, d_block in enumerate(np.array_split(u_dates, num_blocks))
-            for d in d_block
+        _, train_end, second_gap = min(choices)
+        names: dict[object, SplitName] = {
+            **{day: "train" for day in dates[:train_end]},
+            dates[train_end]: "gap",
+            **{
+                day: "validation"
+                for day in dates[train_end + 1 : second_gap]
+            },
+            dates[second_gap]: "gap",
+            **{day: "test" for day in dates[second_gap + 1 :]},
         }
-        for idx in u_indices:
-            block_assignments[idx] = d_to_block.get(dates[idx], -1)
+        split.loc[ordered.index] = ordered["timestamp"].dt.date.map(names)
 
-    for val_block in range(num_blocks):
-        val_mask = block_assignments == val_block
-        val_indices = all_indices[val_mask]
-        if len(val_indices) == 0:
-            continue
-
-        val_dates = dates[val_indices]
-        p_start = min(val_dates) - pd.Timedelta(days=purge_buffer_days)
-        p_end = max(val_dates) + pd.Timedelta(days=purge_buffer_days)
-
-        train_mask = (block_assignments != val_block) & (
-            (dates < p_start) | (dates > p_end)
-        )
-        yield all_indices[train_mask], val_indices
+    result = cast(pd.Series, split)
+    validate_split(table, result, "within-user")
+    gap_days = (
+        work.assign(split=result, date=work["timestamp"].dt.date)
+        .loc[lambda frame: frame["split"] == "gap"]
+        .groupby("user_id")["date"]
+        .nunique()
+    )
+    if not bool(gap_days.eq(2).all()):
+        raise ValueError("each participant must have two purge days")
+    return result
 
 
 def subject_out_split(
@@ -251,7 +168,12 @@ def validate_split(
                 s: rows.loc[rows["split"] == s, "date"]
                 for s in ("train", "validation", "test")
             }
-            if not (max(dates["train"]) < min(dates["validation"]) < min(dates["test"])):
+            ordered = (
+                max(dates["train"])
+                < min(dates["validation"])
+                < min(dates["test"])
+            )
+            if not ordered:
                 raise ValueError(f"{user_id} split order is not chronological")
         return
 
