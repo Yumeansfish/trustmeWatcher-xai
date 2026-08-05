@@ -24,6 +24,16 @@ from trustme_xai.feature_pipeline.window_features import build_window_features
 PRODUCTION_WINDOW_MINUTES = 60
 PRODUCTION_FEATURE_SET = "production_25"
 
+ACTIONABLE_CATEGORY_COLUMNS = [
+    "time_personal_distraction",
+    "time_media",
+    "time_communication",
+    "time_other",
+    "time_development",
+    "time_writing",
+    "time_research",
+]
+
 PRODUCTION_FEATURE_COLUMNS = [
     "current60_state_share_0",
     "current60_state_share_2",
@@ -56,6 +66,8 @@ PRODUCTION_FEATURE_COLUMNS = [
 def build_production_features(
     events: ParsedActivityWatchEvents,
     timestamps: pd.DataFrame,
+    *,
+    include_actionable_categories: bool = False,
 ) -> pd.DataFrame:
     """Build the 25 model features
 
@@ -99,4 +111,11 @@ def build_production_features(
     ]
     if missing:
         raise ValueError(f"feature table is missing required columns: {missing}")
-    return table[["user_id", "timestamp", *PRODUCTION_FEATURE_COLUMNS]].copy()
+    output_columns = ["user_id", "timestamp", *PRODUCTION_FEATURE_COLUMNS]
+    if include_actionable_categories:
+        output_columns.extend(
+            column
+            for column in ACTIONABLE_CATEGORY_COLUMNS
+            if column not in output_columns
+        )
+    return table[output_columns].copy()

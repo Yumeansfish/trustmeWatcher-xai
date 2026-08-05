@@ -7,6 +7,10 @@ import pandas as pd
 import pytest
 
 from trustme_xai.contracts import ParsedActivityWatchEvents
+from trustme_xai.feature_pipeline.production_features import (
+    PRODUCTION_FEATURE_COLUMNS,
+)
+from trustme_xai.feature_pipeline.self_report_features import all_history_columns
 from trustme_xai.inference import inference_service as predictor_module
 from trustme_xai.inference.inference_service import (
     build_current_features,
@@ -17,7 +21,7 @@ from trustme_xai.inference.model_runtime import ModelBundle, TargetModel
 
 
 class _IdentityPreprocessor:
-    feature_columns = ["x"]
+    feature_columns = ["time_personal_distraction"]
 
     def transform(self, table: pd.DataFrame) -> pd.DataFrame:
         return table.copy()
@@ -36,15 +40,22 @@ def _model_bundle() -> ModelBundle:
         target: TargetModel(
             target=target,
             model_name="dummy",
+            feature_set="test_features",
+            feature_columns=list(_IdentityPreprocessor.feature_columns),
+            prediction_frame="absolute",
             estimator=_ConstantEstimator(value),
             preprocessor=_IdentityPreprocessor(),
             metrics={},
+            fallback_score=3.0,
         )
-        for target, value in (("q8_stress", 2.5), ("q9_productivity", 4.0))
+        for target, value in (
+            ("stress_management", 2.5),
+            ("productivity", 4.0),
+        )
     }
     return ModelBundle(
         feature_set="test_features",
-        feature_columns=["x"],
+        feature_columns=["time_personal_distraction"],
         targets=list(target_models),
         target_models=target_models,
         metadata={},
@@ -76,17 +87,21 @@ def _active_events() -> ParsedActivityWatchEvents:
 
 
 def test_predict_current_returns_plain_target_mapping() -> None:
-    current = pd.DataFrame({"user_id": ["u1"], "x": [3.0]})
+    current = pd.DataFrame(
+        {"user_id": ["u1"], "time_personal_distraction": [3.0]}
+    )
 
     predictions = predict_current(_model_bundle(), current)
 
-    assert predictions == {"q8": 2.5, "q9": 4.0}
+    assert predictions == {"stress_management": 2.5, "productivity": 4.0}
     assert all(isinstance(value, float) for value in predictions.values())
 
 
 @pytest.mark.parametrize("row_count", [0, 2])
 def test_predict_current_requires_exactly_one_row(row_count: int) -> None:
-    current = pd.DataFrame({"x": np.arange(row_count, dtype=float)})
+    current = pd.DataFrame(
+        {"time_personal_distraction": np.arange(row_count, dtype=float)}
+    )
 
     with pytest.raises(ValueError, match="exactly one row"):
         predict_current(_model_bundle(), current)
@@ -100,10 +115,19 @@ def test_build_current_features_uses_only_three_latest_past_times(
     def fake_build_production_features(
         events: ParsedActivityWatchEvents,
         requests: pd.DataFrame,
+        *,
+        include_actionable_categories: bool = False,
     ) -> pd.DataFrame:
+        assert include_actionable_categories is False
         captured["events"] = events
         captured["requests"] = requests.copy()
-        return requests.assign(x=np.arange(len(requests), dtype=float))
+        result = requests.copy()
+        for column in PRODUCTION_FEATURE_COLUMNS:
+            result[column] = 0.0
+        result["time_personal_distraction"] = np.arange(
+            len(requests), dtype=float
+        )
+        return result
 
     monkeypatch.setattr(
         predictor_module,
@@ -141,8 +165,14 @@ def test_build_current_features_uses_only_three_latest_past_times(
     captured_events = captured["events"]
     assert isinstance(captured_events, ParsedActivityWatchEvents)
     assert len(captured_events.window) == 1
-    assert result.to_dict(orient="records") == [
-        {"user_id": "u1", "timestamp": current, "x": 3.0},
+    assert result.loc[0, "user_id"] == "u1"
+    assert result.loc[0, "timestamp"] == current
+    assert result.loc[0, "time_personal_distraction"] == 3.0
+    assert list(result.columns) == [
+        "user_id",
+        "timestamp",
+        *PRODUCTION_FEATURE_COLUMNS,
+        *all_history_columns(),
     ]
 
 
@@ -175,21 +205,24 @@ def test_build_current_features_ignores_future_activity() -> None:
 def test_run_inference_connects_parser_features_and_report(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    buckets: dict[str, dict[str, object]] = {"window": {"events": []}}
-    events = _active_events()
+    buckets: dict[str, dict[str, object]] = {
+        "window": {"type": "currentwindow", "events": []},
+        "input": {"type": "os.hid.input", "events": []},
+    }
     as_of = pd.Timestamp("2026-01-10 12:00:00")
-    features = pd.DataFrame({"user_id": ["u1"], "timestamp": [as_of]})
+    features = pd.DataFrame(
+        {
+            "user_id": ["u1"],
+            "timestamp": [as_of],
+            "time_personal_distraction": [0.0],
+        }
+    )
     expected = {"questions": []}
 
     monkeypatch.setattr(
         predictor_module,
-        "parse_activitywatch_events",
-        lambda raw, user_id: events,
-    )
-    monkeypatch.setattr(
-        predictor_module,
-        "build_current_features",
-        lambda parsed, user_id, timestamp, history: features,
+        "build_current_features_from_buckets",
+        lambda raw, user_id, timestamp, questionnaire_times, self_reports: features,
     )
     monkeypatch.setattr(
         predictor_module,

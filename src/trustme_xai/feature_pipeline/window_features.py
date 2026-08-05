@@ -373,6 +373,18 @@ def build_window_features(
                 "personal_distraction",
                 0.0,
             ),
+            "time_media": allocation.category_minutes.get("media", 0.0),
+            "time_communication": allocation.category_minutes.get(
+                "communication",
+                0.0,
+            ),
+            "time_other": allocation.category_minutes.get("other", 0.0),
+            "time_development": allocation.category_minutes.get(
+                "development",
+                0.0,
+            ),
+            "time_writing": allocation.category_minutes.get("writing", 0.0),
+            "time_research": allocation.category_minutes.get("research", 0.0),
             "ratio_communication": divide_or_zero(
                 allocation.category_minutes.get("communication", 0.0),
                 allocation.total_minutes,

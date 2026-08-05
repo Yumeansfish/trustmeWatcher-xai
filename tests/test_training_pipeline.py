@@ -1,147 +1,87 @@
-"""Tests for purged 5-block model training pipeline and EnsembleBundle artifact"""
+"""Tests for the seven-target production training pipeline."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import pytest
 
-from scripts.train_ensemble_models import (
-    CandidateEvaluation,
-    create_candidate_model,
-    evaluate_candidate,
-    fit_and_score_block,
-    train_dashboard_models,
+from trustme_xai.contracts import MODEL_TARGETS
+from trustme_xai.feature_pipeline.production_features import (
+    PRODUCTION_FEATURE_COLUMNS,
 )
-from trustme_xai.inference.ensemble_bundle import (
-    EnsembleBundle,
-    EnsembleTargetModel,
-    ModelFamily,
-    NUM_BLOCKS,
-    TargetMetric,
+from trustme_xai.feature_pipeline.self_report_features import (
+    add_self_report_features,
+    all_history_columns,
 )
 from trustme_xai.inference.model_runtime import load_model_bundle, save_model_bundle
-from trustme_xai.modeling.splits import split_purged_blocks
+from trustme_xai.modeling.models import model_specs
+from trustme_xai.modeling.splits import production_day_purged_within_user_split
+from trustme_xai.modeling.train import train_models
 
 
 def _synthetic_feature_table() -> pd.DataFrame:
-    """Build a synthetic feature table spanning 10 days for two users"""
-    rows = []
-    for uid in ["u1", "u2"]:
-        for day in range(1, 11):
-            for hour in [10, 14]:
-                rows.append(
+    rows: list[dict[str, object]] = []
+    for user_offset, user_id in enumerate(("u1", "u2")):
+        for day in range(1, 13):
+            for hour in (10, 14):
+                base = float((day + hour + user_offset) % 7)
+                row: dict[str, object] = {
+                    "user_id": user_id,
+                    "timestamp": pd.Timestamp(
+                        f"2026-01-{day:02d} {hour:02d}:00:00"
+                    ),
+                    "answer_source": "streamdeck",
+                }
+                row.update(
                     {
-                        "user_id": uid,
-                        "timestamp": pd.Timestamp(f"2026-01-{day:02d} {hour:02d}:00:00"),
-                        "feat_a": float(day * 0.5 + (1.0 if uid == "u1" else 2.0)),
-                        "feat_b": float(hour / 10.0),
-                        "stress": float((day % 5) + 1.0),
-                        "fatigue": float((day % 4) + 1.0),
-                        "valence": float((day % 6) + 0.5),
-                        "arousal": float((day % 3) + 2.0),
-                        "productivity": float((day % 5) + 1.5),
-                        "engagement": float((day % 4) + 2.0),
-                        "overall_wellbeing": float((day % 5) + 2.5),
-                    },
+                        feature: float(day + hour / 100.0 + index / 1000.0)
+                        for index, feature in enumerate(PRODUCTION_FEATURE_COLUMNS)
+                    }
                 )
-    return pd.DataFrame(rows)
+                row.update(
+                    {
+                        target: float((base + index / 10.0) % 6.0)
+                        for index, target in enumerate(MODEL_TARGETS)
+                    }
+                )
+                rows.append(row)
+    return add_self_report_features(pd.DataFrame(rows))
 
 
-class TestSplitPurgedBlocks:
-    def test_yields_five_blocks(self) -> None:
-        df = _synthetic_feature_table()
-        blocks = list(split_purged_blocks(df))
-        assert len(blocks) == NUM_BLOCKS
+def test_production_split_is_chronological_and_purged() -> None:
+    table = _synthetic_feature_table()
 
-    def test_indices_are_disjoint_per_block(self) -> None:
-        df = _synthetic_feature_table()
-        for train_idx, val_idx in split_purged_blocks(df):
-            overlap = set(train_idx).intersection(set(val_idx))
-            assert len(overlap) == 0, f"Found overlap between train and val indices: {overlap}"
+    split = production_day_purged_within_user_split(table)
 
-    def test_missing_required_columns_raises(self) -> None:
-        bad_df = pd.DataFrame({"user_id": ["u1"]})
-        with pytest.raises(ValueError, match="user_id and timestamp"):
-            list(split_purged_blocks(bad_df))
+    assert set(split) == {"train", "validation", "gap", "test"}
+    for user_id, rows in table.assign(split=split).groupby("user_id"):
+        assert set(rows["split"]) == {"train", "validation", "gap", "test"}
+        gap_days = rows.loc[rows["split"] == "gap", "timestamp"].dt.date.nunique()
+        assert gap_days == 2, user_id
 
 
-class TestModelFactoryAndScoring:
-    def test_create_candidate_model_valid_families(self) -> None:
-        for family in ModelFamily:
-            try:
-                model = create_candidate_model(family)
-                assert hasattr(model, "fit")
-                assert hasattr(model, "predict")
-            except ValueError:
-                pass
+def test_train_models_selects_all_targets_and_round_trips(tmp_path: Path) -> None:
+    table = _synthetic_feature_table()
+    split = production_day_purged_within_user_split(table)
 
+    result = train_models(
+        table,
+        split,
+        normalization="global",
+        model_specs=model_specs(["ridge_1"]),
+    )
 
-    def test_fit_and_score_block(self) -> None:
-        df = _synthetic_feature_table()
-        train_block = df.iloc[:20]
-        val_block = df.iloc[20:]
-        feature_cols = ["feat_a", "feat_b"]
+    assert result.bundle.targets == MODEL_TARGETS
+    assert set(result.bundle.target_models) == set(MODEL_TARGETS)
+    assert set(result.summary["selected_model"]) == {"ridge_1"}
+    assert set(result.test_predictions["target"]) == set(MODEL_TARGETS)
 
-        model, mse = fit_and_score_block(
-            ModelFamily.RIDGE,
-            train_block,
-            val_block,
-            TargetMetric.STRESS,
-            feature_cols,
-        )
-        assert hasattr(model, "predict")
-        assert mse >= 0.0
-
-    def test_evaluate_candidate(self) -> None:
-        df = _synthetic_feature_table()
-        feature_cols = ["feat_a", "feat_b"]
-
-        eval_res = evaluate_candidate(
-            ModelFamily.RIDGE,
-            df,
-            TargetMetric.PRODUCTIVITY,
-            feature_cols,
-        )
-        assert eval_res.family == ModelFamily.RIDGE
-        assert len(eval_res.block_models) == NUM_BLOCKS
-        assert eval_res.avg_val_mse >= 0.0
-
-
-class TestTrainDashboardModels:
-    def test_trains_all_targets(self, tmp_path: Path) -> None:
-        df = _synthetic_feature_table()
-        bundle = train_dashboard_models(df, feature_columns=["feat_a", "feat_b"])
-
-        assert isinstance(bundle, EnsembleBundle)
-        assert len(bundle.targets) == len(TargetMetric)
-
-        for target in TargetMetric:
-            target_model = bundle.target_models[target]
-            assert isinstance(target_model, EnsembleTargetModel)
-            assert len(target_model.block_models) == NUM_BLOCKS
-            assert target_model.target == target
-
-        # Save and load roundtrip verification
-        save_path = tmp_path / "current.joblib"
-        save_model_bundle(bundle, save_path)
-        assert save_path.exists()
-
-        loaded_bundle = load_model_bundle(save_path)
-        assert loaded_bundle.schema_version == bundle.schema_version
-        assert len(loaded_bundle.targets) == len(bundle.targets)
-
-    def test_prediction_averages_across_blocks(self) -> None:
-        df = _synthetic_feature_table()
-        bundle = train_dashboard_models(df, feature_columns=["feat_a", "feat_b"])
-
-        single_row = df.iloc[0:1]
-        prod_score = bundle.predict_target(single_row, TargetMetric.PRODUCTIVITY)
-        assert isinstance(prod_score, float)
-        assert 0.0 <= prod_score <= 10.0
-
-        all_preds = bundle.predict(single_row)
-        assert len(all_preds) == len(TargetMetric)
-        assert "productivity" in all_preds
+    path = tmp_path / "current.joblib"
+    save_model_bundle(result.bundle, path)
+    loaded = load_model_bundle(path)
+    assert loaded.targets == MODEL_TARGETS
+    assert loaded.feature_columns == [
+        *PRODUCTION_FEATURE_COLUMNS,
+        *all_history_columns(),
+    ]

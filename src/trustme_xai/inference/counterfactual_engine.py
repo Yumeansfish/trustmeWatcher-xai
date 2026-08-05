@@ -7,38 +7,29 @@ from typing import Any
 import pandas as pd
 
 from trustme_xai.inference.counterfactual_constraints import (
-    ACTIONABLE_CATEGORIES,
     check_time_budget,
     validate_counterfactual,
 )
 from trustme_xai.inference.model_runtime import ModelBundle
 
 DONOR_PRIORITY: tuple[str, ...] = (
-    "minutes_media_social_media",
-    "minutes_media_games",
-    "minutes_media_video",
-    "minutes_comms_im",
-    "minutes_comms_email",
-    "minutes_uncategorized",
     "time_personal_distraction",
     "time_media",
     "time_communication",
+    "time_other",
     "time_research",
     "time_writing",
     "time_development",
 )
 
 RECEIVER_PRIORITY: tuple[str, ...] = (
-    "minutes_work_programming",
-    "minutes_work_research_and_reading",
-    "minutes_work_office",
-    "minutes_work",
     "time_development",
     "time_writing",
     "time_research",
     "time_communication",
     "time_media",
     "time_personal_distraction",
+    "time_other",
 )
 
 STEP_SIZE_MINUTES: float = 5.0
@@ -95,7 +86,7 @@ def find_counterfactual(
             "target": target,
             "predicted_score": round(baseline_pred, 4),
             "desired_score": round(float(desired_score), 4),
-            "calibrated_projected_score": round(baseline_pred, 4),
+            "projected_score": round(baseline_pred, 4),
             "success": True,
             "shifts": [],
         }
@@ -103,16 +94,10 @@ def find_counterfactual(
     current = dict(row_data)
     actionable_in_row = [
         category
-        for category in ACTIONABLE_CATEGORIES
+        for category in DONOR_PRIORITY
         if category in current
         and float(current.get(category, 0.0)) >= STEP_SIZE_MINUTES
     ]
-    if not actionable_in_row:
-        actionable_in_row = [
-            category
-            for category in current
-            if category.startswith(("time_", "minutes_"))
-        ]
 
     best_pred = baseline_pred
     deltas_acc: dict[str, float] = {}
@@ -127,7 +112,7 @@ def find_counterfactual(
             if avail < STEP_SIZE_MINUTES:
                 continue
 
-            for receiver in ACTIONABLE_CATEGORIES:
+            for receiver in RECEIVER_PRIORITY:
                 deltas = {
                     donor: -STEP_SIZE_MINUTES,
                     receiver: STEP_SIZE_MINUTES,
@@ -185,12 +170,12 @@ def find_counterfactual(
     ]
 
     raw_delta = best_pred - baseline_pred
-    calibrated_projected = baseline_pred + (raw_delta * sensitivity_gamma)
+    projected_score = baseline_pred + (raw_delta * sensitivity_gamma)
 
     is_satisfied_final = (
-        calibrated_projected >= desired_score
+        projected_score >= desired_score
         if want_increase
-        else calibrated_projected <= desired_score
+        else projected_score <= desired_score
     )
 
     return {
@@ -199,7 +184,7 @@ def find_counterfactual(
         "target": target,
         "predicted_score": round(baseline_pred, 4),
         "desired_score": round(float(desired_score), 4),
-        "calibrated_projected_score": round(calibrated_projected, 4),
+        "projected_score": round(projected_score, 4),
         "success": is_satisfied_final,
         "shifts": shifts,
     }
