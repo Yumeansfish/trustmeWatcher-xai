@@ -51,10 +51,7 @@ def _request_times(
     as_of: pd.Timestamp,
     previous_questionnaire_times: Sequence[object],
 ) -> pd.DataFrame:
-    normalized = {
-        normalize_timestamp(value)
-        for value in previous_questionnaire_times
-    }
+    normalized = {normalize_timestamp(value) for value in previous_questionnaire_times}
     previous = sorted(value for value in normalized if value < as_of)[-3:]
     return pd.DataFrame(
         {
@@ -129,9 +126,7 @@ def build_current_features(
         raise ValueError("no window or web activity in the current 60-minute window")
 
     report_times = [
-        report["timestamp"]
-        for report in past_self_reports
-        if "timestamp" in report
+        report["timestamp"] for report in past_self_reports if "timestamp" in report
     ]
     requests = _request_times(
         normalized_user_id,
@@ -207,13 +202,10 @@ def _validate_bucket_sources(
     activitywatch_buckets: Mapping[str, Mapping[str, object]],
 ) -> None:
     source_types = {
-        str(bucket.get("type") or "")
-        for bucket in activitywatch_buckets.values()
+        str(bucket.get("type") or "") for bucket in activitywatch_buckets.values()
     }
     if not source_types.intersection({"currentwindow", "web.tab.current"}):
         raise ValueError("ActivityWatch window or web bucket is required")
-    if "os.hid.input" not in source_types:
-        raise ValueError("ActivityWatch input bucket is required")
 
 
 def build_current_features_from_buckets(

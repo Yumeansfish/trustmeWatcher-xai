@@ -87,9 +87,7 @@ def _active_events() -> ParsedActivityWatchEvents:
 
 
 def test_predict_current_returns_plain_target_mapping() -> None:
-    current = pd.DataFrame(
-        {"user_id": ["u1"], "time_personal_distraction": [3.0]}
-    )
+    current = pd.DataFrame({"user_id": ["u1"], "time_personal_distraction": [3.0]})
 
     predictions = predict_current(_model_bundle(), current)
 
@@ -124,9 +122,7 @@ def test_build_current_features_uses_only_three_latest_past_times(
         result = requests.copy()
         for column in PRODUCTION_FEATURE_COLUMNS:
             result[column] = 0.0
-        result["time_personal_distraction"] = np.arange(
-            len(requests), dtype=float
-        )
+        result["time_personal_distraction"] = np.arange(len(requests), dtype=float)
         return result
 
     monkeypatch.setattr(
@@ -184,6 +180,12 @@ def test_build_current_features_rejects_no_recent_activity() -> None:
             "2026-01-10 12:00:00",
             [],
         )
+
+
+def test_activitywatch_input_bucket_is_optional() -> None:
+    predictor_module._validate_bucket_sources(
+        {"window": {"type": "currentwindow", "events": []}}
+    )
 
 
 def test_build_current_features_ignores_future_activity() -> None:
