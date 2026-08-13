@@ -25,6 +25,11 @@ from trustme_xai.inference.model_runtime import (
     clip_predictions,
     make_preprocessor,
 )
+from trustme_xai.modeling.fixed_recipes import (
+    COMPACT_MODEL_VERSION,
+    FixedTargetRecipe,
+    load_compact_recipes,
+)
 from trustme_xai.modeling.metrics import regression_metrics
 from trustme_xai.modeling.models import ModelSpec, default_model_specs
 from trustme_xai.modeling.splits import validate_split
@@ -89,13 +94,17 @@ def _predictions(
     target: str,
     feature_columns: list[str],
     prediction_frame: str,
+    gamma: float = 1.0,
 ) -> np.ndarray:
     values = np.asarray(
         estimator.predict(rows[feature_columns]),
         dtype=float,
     ).reshape(-1)
+    baseline = rows[history_column(target, "mean")].to_numpy(dtype=float)
     if prediction_frame == "personal_residual":
-        values += rows[history_column(target, "mean")].to_numpy(dtype=float)
+        values += baseline
+    if gamma < 1.0:
+        values = baseline + gamma * (values - baseline)
     return clip_predictions(values)
 
 
@@ -105,6 +114,7 @@ def _metrics(
     target: str,
     feature_columns: list[str],
     prediction_frame: str,
+    gamma: float = 1.0,
 ) -> dict[str, int | float]:
     predictions = _predictions(
         estimator,
@@ -112,6 +122,7 @@ def _metrics(
         target,
         feature_columns,
         prediction_frame,
+        gamma,
     )
     return regression_metrics(rows[target].to_numpy(dtype=float), predictions)
 
@@ -272,6 +283,245 @@ def train_target(
         model=model,
         candidates=pd.DataFrame(candidates),
         test_predictions=predictions,
+    )
+
+
+def _train_compact_target(
+    table: pd.DataFrame,
+    row_split: pd.Series,
+    target: str,
+    recipe: FixedTargetRecipe,
+    spec: ModelSpec,
+) -> TargetTrainingResult:
+    development_mask = row_split.isin(["train", "validation"])
+    development = table.loc[development_mask].copy()
+    development_split = row_split.loc[development.index]
+    feature_columns = list(recipe.feature_columns)
+
+    selection_preprocessor = make_preprocessor(
+        "per_user",
+        list(PRODUCTION_FEATURE_COLUMNS),
+    ).fit(development, development_split)
+    normalized_development = selection_preprocessor.transform(development)
+    train = _target_rows(
+        normalized_development,
+        development_split,
+        "train",
+        target,
+    )
+    validation = _target_rows(
+        normalized_development,
+        development_split,
+        "validation",
+        target,
+    )
+    if train.empty or validation.empty:
+        raise ValueError(f"{target} needs train and validation history")
+
+    selection_estimator = spec.factory()
+    selection_estimator.fit(
+        train[feature_columns],
+        _training_values(train, target, recipe.prediction_frame),
+    )
+    train_metrics = _metrics(
+        selection_estimator,
+        train,
+        target,
+        feature_columns,
+        recipe.prediction_frame,
+        recipe.gamma,
+    )
+    validation_metrics = _metrics(
+        selection_estimator,
+        validation,
+        target,
+        feature_columns,
+        recipe.prediction_frame,
+        recipe.gamma,
+    )
+    candidate = {
+        "target": target,
+        "feature_set": COMPACT_MODEL_VERSION,
+        "feature_count": len(feature_columns),
+        "prediction_frame": recipe.prediction_frame,
+        "gamma": recipe.gamma,
+        "model": spec.name,
+        **_flatten_metrics("train", train_metrics),
+        **_flatten_metrics("validation", validation_metrics),
+    }
+
+    final_split = pd.Series("train", index=development.index, dtype="object")
+    final_preprocessor = make_preprocessor(
+        "per_user",
+        list(PRODUCTION_FEATURE_COLUMNS),
+    ).fit(development, final_split)
+    normalized_final = final_preprocessor.transform(development)
+    final_rows = normalized_final.loc[
+        normalized_final[target].notna()
+        & normalized_final[history_column(target, "mean")].notna()
+    ].copy()
+    estimator = spec.factory()
+    estimator.fit(
+        final_rows[feature_columns],
+        _training_values(final_rows, target, recipe.prediction_frame),
+    )
+
+    raw_test = _target_rows(table, row_split, "test", target)
+    if raw_test.empty:
+        raise ValueError(f"{target} needs test history")
+    test = final_preprocessor.transform(raw_test)
+    test_values = _predictions(
+        estimator,
+        test,
+        target,
+        feature_columns,
+        recipe.prediction_frame,
+        recipe.gamma,
+    )
+    test_metrics = regression_metrics(
+        test[target].to_numpy(dtype=float),
+        test_values,
+    )
+    metrics = {
+        **_flatten_metrics("train", train_metrics),
+        **_flatten_metrics("validation", validation_metrics),
+        **_flatten_metrics("test", test_metrics),
+    }
+    model = TargetModel(
+        target=target,
+        model_name=spec.name,
+        feature_set=COMPACT_MODEL_VERSION,
+        feature_columns=feature_columns,
+        prediction_frame=recipe.prediction_frame,
+        estimator=estimator,
+        preprocessor=final_preprocessor,
+        metrics=metrics,
+        fallback_score=float(final_rows[target].mean()),
+        blend_gamma=recipe.gamma,
+        score_range=(0.0, 6.0),
+    )
+    predictions = raw_test[["user_id", "timestamp", target]].copy()
+    predictions = predictions.rename(columns={target: "truth"})
+    predictions["target"] = target
+    predictions["prediction"] = test_values
+    predictions["model"] = model.model_name
+    predictions["feature_set"] = COMPACT_MODEL_VERSION
+    predictions["prediction_frame"] = recipe.prediction_frame
+    predictions["gamma"] = recipe.gamma
+    predictions["normalization"] = "per_user"
+    return TargetTrainingResult(
+        model=model,
+        candidates=pd.DataFrame([candidate]),
+        test_predictions=predictions,
+    )
+
+
+def train_compact_models(
+    table: pd.DataFrame,
+    row_split: pd.Series,
+) -> TrainingResult:
+    """Train the fixed compact production bundle.
+
+    Args:
+        table: Complete frozen feature and target table.
+        row_split: Locked chronological row split.
+
+    Returns:
+        Complete compact training result.
+    """
+    if not table.index.equals(row_split.index):
+        raise ValueError("row_split index must match the feature table")
+    required = [
+        *MODEL_TARGETS,
+        *PRODUCTION_FEATURE_COLUMNS,
+        *all_history_columns(),
+    ]
+    missing = [column for column in required if column not in table]
+    if missing:
+        raise ValueError(f"feature table is missing columns: {missing}")
+    validate_split(table, row_split, "within-user")
+
+    recipes = load_compact_recipes()
+    specs = {spec.name: spec for spec in default_model_specs()}
+    unknown = sorted(
+        {recipe.model_name for recipe in recipes.values()} - set(specs),
+    )
+    if unknown:
+        raise ValueError(f"compact recipes use unknown models: {unknown}")
+    results = [
+        _train_compact_target(
+            table,
+            row_split,
+            target,
+            recipes[target],
+            specs[recipes[target].model_name],
+        )
+        for target in MODEL_TARGETS
+    ]
+    target_models = {result.model.target: result.model for result in results}
+    trained_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    split_counts = {
+        name: int((row_split == name).sum())
+        for name in ("train", "validation", "gap", "test")
+    }
+    bundle = ModelBundle(
+        feature_set=COMPACT_MODEL_VERSION,
+        feature_columns=[*PRODUCTION_FEATURE_COLUMNS, *all_history_columns()],
+        targets=list(MODEL_TARGETS),
+        target_models=target_models,
+        metadata={
+            "model_version": COMPACT_MODEL_VERSION,
+            "trained_at": trained_at,
+            "normalization": "per_user",
+            "preprocessor_fit_scope": "train_plus_validation",
+            "model_selection": "fixed_90_percent_validation_shap",
+            "recipe_manifest": "compact_90_v1.json",
+            "history_policy": "strictly earlier real StreamDeck answers only",
+            "minimum_complete_history_rows": 1,
+            "counterfactual_policy": "unavailable_prediction_only",
+            "counterfactual_targets": [],
+            "split_strategy": "chronological_day_purged_within_user_80_10_10",
+            "source_rows": int(len(table)),
+            "split_counts": split_counts,
+            "target_formulas": {
+                "mood_valence": "q1_feelings + 3",
+                "arousal": "q2_intensity",
+                "restfulness": "6 - q3_tiredness",
+                "stress_management": "6 - q8_stress",
+                "productivity": "q9_productivity",
+                "engagement": "mean(q4_enthusiasm, q5_immersion)",
+                "overall_wellbeing": (
+                    "mean(mood_valence, engagement, stress_management)"
+                ),
+            },
+            "excluded_questionnaire_items": ["q6_comfort", "q7_social"],
+        },
+    )
+    summary = pd.DataFrame(
+        [
+            {
+                "target": target,
+                "selected_model": target_models[target].model_name,
+                "feature_set": target_models[target].feature_set,
+                "feature_count": len(target_models[target].feature_columns),
+                "prediction_frame": target_models[target].prediction_frame,
+                "gamma": target_models[target].blend_gamma,
+                **target_models[target].metrics,
+            }
+            for target in MODEL_TARGETS
+        ],
+    )
+    return TrainingResult(
+        bundle=bundle,
+        summary=summary,
+        candidates=pd.concat(
+            [result.candidates for result in results],
+            ignore_index=True,
+        ),
+        test_predictions=pd.concat(
+            [result.test_predictions for result in results],
+            ignore_index=True,
+        ),
     )
 
 

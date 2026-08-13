@@ -28,6 +28,7 @@ where = ["src"]
 trustme_xai = [
     "current.joblib",
     "feature_pipeline/*.json",
+    "modeling/*.json",
 ]
 
 [tool.pytest.ini_options]

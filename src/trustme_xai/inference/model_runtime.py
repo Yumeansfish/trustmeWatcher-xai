@@ -407,7 +407,10 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
         if not model.model_name:
             raise ValueError(f"{target} has no model name")
 
-    if bundle.feature_set == "production_25_history":
+    if bundle.feature_set in {
+        "compact_90_v1",
+        "production_25_history",
+    }:
         from trustme_xai.contracts import MODEL_TARGETS
         from trustme_xai.feature_pipeline.production_features import (
             PRODUCTION_FEATURE_COLUMNS,
@@ -434,12 +437,39 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
             raise ValueError("production targets must use the 0..6 score range")
         for target in bundle.targets:
             model = bundle.target_models[target]
-            if not set(model.feature_columns).intersection(
-                PRODUCTION_FEATURE_COLUMNS,
+            if (
+                bundle.feature_set != "compact_90_v1"
+                and not set(model.feature_columns).intersection(
+                    PRODUCTION_FEATURE_COLUMNS,
+                )
             ):
                 raise ValueError(f"{target} does not use ActivityWatch features")
             if history_column(target, "mean") not in model.feature_columns:
                 raise ValueError(f"{target} does not use its past self-reports")
+
+        if bundle.feature_set == "compact_90_v1":
+            from trustme_xai.modeling.fixed_recipes import (
+                COMPACT_MODEL_VERSION,
+                load_compact_recipes,
+            )
+
+            if model_version != COMPACT_MODEL_VERSION:
+                raise ValueError("compact bundle model version does not match")
+            if bundle.metadata.get("minimum_complete_history_rows") != 1:
+                raise ValueError("compact bundle must require one history row")
+            if bundle.metadata.get("counterfactual_targets") != []:
+                raise ValueError("compact bundle must disable counterfactuals")
+            recipes = load_compact_recipes()
+            for target, recipe in recipes.items():
+                model = bundle.target_models[target]
+                if model.model_name != recipe.model_name:
+                    raise ValueError(f"{target} compact model does not match")
+                if model.prediction_frame != recipe.prediction_frame:
+                    raise ValueError(f"{target} compact frame does not match")
+                if model.feature_columns != list(recipe.feature_columns):
+                    raise ValueError(f"{target} compact features do not match")
+                if model.blend_gamma != recipe.gamma:
+                    raise ValueError(f"{target} compact gamma does not match")
 
 
 def save_model_bundle(bundle: ModelBundle, path: str | Path) -> None:
