@@ -122,6 +122,22 @@ def test_model_bundle_round_trips_through_joblib(tmp_path: Path) -> None:
     assert loaded.feature_columns == expected.feature_columns
 
 
+def test_load_model_bundle_accepts_schema_four_without_gamma(tmp_path: Path) -> None:
+    import joblib
+
+    path = tmp_path / "schema_four.joblib"
+    expected = _model_bundle()
+    expected.schema_version = 4
+    for model in expected.target_models.values():
+        model.__dict__.pop("blend_gamma", None)
+    joblib.dump(expected, path)
+
+    loaded = load_model_bundle(path)
+
+    assert loaded.schema_version == 4
+    assert all(model.blend_gamma == 1.0 for model in loaded.target_models.values())
+
+
 def test_load_model_bundle_rejects_wrong_object(tmp_path: Path) -> None:
     import joblib
 

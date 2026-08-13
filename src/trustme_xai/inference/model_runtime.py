@@ -10,7 +10,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
-MODEL_BUNDLE_SCHEMA_VERSION = 4
+MODEL_BUNDLE_SCHEMA_VERSION = 5
+SUPPORTED_MODEL_BUNDLE_SCHEMA_VERSIONS = frozenset({4, MODEL_BUNDLE_SCHEMA_VERSION})
 MIN_SCORE = 0.0
 MAX_SCORE = 6.0
 
@@ -268,6 +269,7 @@ class TargetModel:
     preprocessor: FeaturePreprocessor
     metrics: dict[str, int | float]
     fallback_score: float
+    blend_gamma: float = 1.0
     score_range: tuple[float, float] | None = None
 
     def predict(self, table: pd.DataFrame) -> pd.Series:
@@ -283,7 +285,8 @@ class TargetModel:
         features = numeric_model_features(transformed, self.feature_columns)
         values = self.estimator.predict(features)
         predictions = np.asarray(values, dtype=float).reshape(-1)
-        if self.prediction_frame == "personal_residual":
+        baseline: np.ndarray | None = None
+        if self.prediction_frame == "personal_residual" or self.blend_gamma < 1.0:
             from trustme_xai.feature_pipeline.self_report_features import (
                 history_column,
             )
@@ -291,8 +294,15 @@ class TargetModel:
             baseline = pd.to_numeric(
                 table[history_column(self.target, "mean")],
                 errors="coerce",
-            ).fillna(self.fallback_score)
-            predictions += baseline.to_numpy(dtype=float)
+            ).fillna(self.fallback_score).to_numpy(dtype=float)
+        if self.prediction_frame == "personal_residual":
+            if baseline is None:
+                raise RuntimeError("personal residual prediction needs a baseline")
+            predictions += baseline
+        if self.blend_gamma < 1.0:
+            if baseline is None:
+                raise RuntimeError("blended prediction needs a baseline")
+            predictions = baseline + self.blend_gamma * (predictions - baseline)
         if not np.isfinite(predictions).all():
             raise ValueError("model predictions must be finite")
         if self.score_range is not None:
@@ -357,7 +367,7 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
     Returns:
         None
     """
-    if bundle.schema_version != MODEL_BUNDLE_SCHEMA_VERSION:
+    if bundle.schema_version not in SUPPORTED_MODEL_BUNDLE_SCHEMA_VERSIONS:
         raise ValueError(f"unsupported model bundle schema: {bundle.schema_version}")
     if not bundle.feature_set.strip():
         raise ValueError("model bundle needs a feature set")
@@ -392,6 +402,8 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
             raise ValueError(f"{target} has an unknown prediction frame")
         if not np.isfinite(model.fallback_score):
             raise ValueError(f"{target} has no finite fallback score")
+        if not np.isfinite(model.blend_gamma) or not 0.0 <= model.blend_gamma <= 1.0:
+            raise ValueError(f"{target} has an invalid blend gamma")
         if not model.model_name:
             raise ValueError(f"{target} has no model name")
 

@@ -203,6 +203,43 @@ def predict_current(
     return result
 
 
+def _complete_history_rows(
+    bundle: ModelBundle,
+    past_self_reports: Sequence[Mapping[str, object]],
+    as_of: pd.Timestamp,
+) -> int:
+    complete = 0
+    for report in past_self_reports:
+        if "timestamp" not in report:
+            continue
+        try:
+            timestamp = normalize_timestamp(report["timestamp"])
+            values = np.asarray(
+                [report.get(target) for target in bundle.targets],
+                dtype=float,
+            )
+        except (TypeError, ValueError):
+            continue
+        if timestamp < as_of and np.isfinite(values).all():
+            complete += 1
+    return complete
+
+
+def _require_model_history(
+    bundle: ModelBundle,
+    past_self_reports: Sequence[Mapping[str, object]],
+    as_of: pd.Timestamp,
+) -> None:
+    required = int(bundle.metadata.get("minimum_complete_history_rows", 0))
+    if required <= 0:
+        return
+    if _complete_history_rows(bundle, past_self_reports, as_of) < required:
+        raise ValueError(
+            f"{bundle.metadata.get('model_version', 'model')} needs one complete "
+            "earlier StreamDeck check-in",
+        )
+
+
 def _validate_bucket_sources(
     activitywatch_buckets: Mapping[str, Mapping[str, object]],
 ) -> None:
@@ -277,12 +314,14 @@ def run_inference(
         semantic seven-target prediction report
     """
     current_time = normalize_timestamp(as_of)
+    history = past_self_reports or ()
+    _require_model_history(bundle, history, current_time)
     current = build_current_features_from_buckets(
         activitywatch_buckets,
         user_id,
         current_time,
         previous_questionnaire_times or (),
-        past_self_reports or (),
+        history,
     )
     normalized_user_id = user_id.strip()
     return build_prediction_report(
