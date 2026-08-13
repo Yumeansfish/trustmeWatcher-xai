@@ -207,7 +207,7 @@ def test_production_25_feature_contract_and_golden_values() -> None:
             0.0,
             0.0,
             -15.0,
-            2.7745493121200364,
+            2.5693934776176652,
             0.0,
             0.0,
             0.0,

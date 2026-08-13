@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from importlib import resources
 from types import SimpleNamespace
 
 import numpy as np
@@ -109,3 +111,18 @@ def test_compact_bundle_requires_one_complete_earlier_checkin() -> None:
         **{target: 3.0 for target in MODEL_TARGETS},
     }
     _require_model_history(bundle, [report], as_of)
+
+
+def test_behavior_model_records_train_only_provenance() -> None:
+    artifact = resources.files("trustme_xai.feature_pipeline").joinpath(
+        "behavior_state_model.json",
+    )
+    with artifact.open(encoding="utf-8") as handle:
+        provenance = json.load(handle)["provenance"]
+
+    assert provenance["fit_hour_rows"] == 4497
+    assert provenance["n_clusters"] == 6
+    assert provenance["n_init"] == 20
+    assert provenance["random_state"] == 42
+    assert provenance["validation_or_test_activity_used"] is False
+    assert provenance["state_feature_parity_max_abs_diff"] < 1e-12

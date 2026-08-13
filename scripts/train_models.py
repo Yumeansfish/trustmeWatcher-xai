@@ -44,7 +44,8 @@ DEFAULT_FEATURES = (
     SOURCE_ROOT / "tmp" / "exact_kmeans_ablation" / "refit_training_table.csv"
 )
 DEFAULT_ANSWER_SOURCES = SOURCE_ROOT / "tmp" / "answer_sources.csv"
-DEFAULT_OUTPUT = Path("src/trustme_xai/current.joblib")
+DEPLOYMENT_OUTPUT = Path("src/trustme_xai/current.joblib")
+DEFAULT_OUTPUT = Path("/tmp/trustme_xai_selected_models.joblib")
 DEFAULT_REPORT_DIR = Path("/tmp/trustme_xai_history_training")
 
 
@@ -323,6 +324,11 @@ def _json_ready(value: object) -> object:
 
 def main() -> None:
     args = build_parser().parse_args()
+    if args.output_path.resolve() == DEPLOYMENT_OUTPUT.resolve():
+        raise RuntimeError(
+            "current.joblib is locked to compact_90_v1; use "
+            "scripts/train_compact_models.py",
+        )
     table = load_training_table(
         args.answers_csv,
         args.answer_sources_csv,

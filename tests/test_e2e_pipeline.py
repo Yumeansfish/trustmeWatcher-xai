@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from importlib import resources
+
 import numpy as np
 import pandas as pd
 
@@ -11,7 +13,11 @@ from trustme_xai.feature_pipeline.production_features import (
 )
 from trustme_xai.inference.counterfactual_service import run_counterfactual
 from trustme_xai.inference.inference_service import run_inference
-from trustme_xai.inference.model_runtime import ModelBundle, TargetModel
+from trustme_xai.inference.model_runtime import (
+    ModelBundle,
+    TargetModel,
+    load_model_bundle,
+)
 
 
 class _IdentityPreprocessor:
@@ -113,3 +119,26 @@ def test_end_to_end_runtime_contract() -> None:
     assert abs(
         sum(shift["delta_minutes"] for shift in counterfactual["shifts"])
     ) < 1e-4
+
+
+def test_deployed_compact_bundle_returns_seven_predictions() -> None:
+    timestamp = pd.Timestamp("2026-07-30T10:30:00+02:00")
+    model_path = resources.files("trustme_xai").joinpath("current.joblib")
+    bundle = load_model_bundle(model_path)
+    history = {
+        "timestamp": "2026-07-29T10:30:00+02:00",
+        **{target: 3.0 for target in MODEL_TARGETS},
+    }
+
+    report = run_inference(
+        bundle=bundle,
+        activitywatch_buckets=_buckets(),
+        user_id="user_e2e",
+        as_of=timestamp,
+        past_self_reports=[history],
+    )
+
+    predictions = report["predictions"]
+    assert report["model_version"] == "compact_90_v1"
+    assert [item["target"] for item in predictions] == MODEL_TARGETS
+    assert all(0.0 <= item["prediction"] <= 6.0 for item in predictions)
