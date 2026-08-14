@@ -37,8 +37,6 @@ MAX_SHIFTS: int = 12
 DEFAULT_SENSITIVITY_GAMMA: float = 1.0
 
 
-
-
 def find_counterfactual(
     bundle: ModelBundle,
     feature_row: pd.DataFrame,
@@ -103,9 +101,10 @@ def find_counterfactual(
     deltas_acc: dict[str, float] = {}
 
     for _ in range(MAX_SHIFTS):
-        improved = False
         best_step_pred = best_pred
         best_donor, best_receiver, best_step_size = None, None, 0.0
+        candidate_rows: list[dict[str, Any]] = []
+        candidate_moves: list[tuple[str, str]] = []
 
         for donor in actionable_in_row:
             avail = float(current.get(donor, 0.0))
@@ -124,21 +123,30 @@ def find_counterfactual(
                 cand[donor] -= STEP_SIZE_MINUTES
                 cand[receiver] = float(cand.get(receiver, 0.0)) + STEP_SIZE_MINUTES
                 validate_counterfactual(row_data, cand)
+                candidate_rows.append(cand)
+                candidate_moves.append((donor, receiver))
 
-                cand_pred = bundle.predict_target(pd.DataFrame([cand]), target)
-                is_better = (
-                    cand_pred > best_step_pred
-                    if want_increase
-                    else cand_pred < best_step_pred
-                )
+        if not candidate_rows:
+            break
 
-                if is_better:
-                    best_step_pred = cand_pred
-                    best_donor, best_receiver = donor, receiver
-                    best_step_size = STEP_SIZE_MINUTES
-                    improved = True
+        candidate_predictions = bundle.target_models[target].predict(
+            pd.DataFrame(candidate_rows)
+        )
+        for (donor, receiver), cand_pred in zip(
+            candidate_moves,
+            candidate_predictions,
+            strict=True,
+        ):
+            if (
+                cand_pred > best_step_pred
+                if want_increase
+                else cand_pred < best_step_pred
+            ):
+                best_step_pred = float(cand_pred)
+                best_donor, best_receiver = donor, receiver
+                best_step_size = STEP_SIZE_MINUTES
 
-        if improved and best_donor and best_receiver:
+        if best_donor and best_receiver:
             best_pred = best_step_pred
             current[best_donor] -= best_step_size
             current[best_receiver] = (
