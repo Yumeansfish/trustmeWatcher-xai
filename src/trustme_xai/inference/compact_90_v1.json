@@ -1,6 +1,12 @@
 {
-  "schema": "trustme_xai.fixed_recipes",
+  "schema": "trustme_xai.compact_artifact.v1",
   "model_version": "compact_90_v1",
+  "feature_set": "compact_90_v1",
+  "normalization": "per_user",
+  "minimum_complete_history_rows": 1,
+  "counterfactual_targets": [],
+  "preprocessor_fit_scope": "train_plus_validation",
+  "score_range": [0.0, 6.0],
   "selection": "90_percent_cumulative_absolute_validation_shap",
   "targets": {
     "mood_valence": {

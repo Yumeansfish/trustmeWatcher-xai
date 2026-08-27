@@ -7,12 +7,9 @@ from trustme_xai.inference.inference_service import (
     run_inference,
 )
 from trustme_xai.inference.model_runtime import (
-    GlobalStandardizer,
     ModelBundle,
-    PerUserStandardizer,
     TargetModel,
     load_model_bundle,
-    save_model_bundle,
     validate_model_bundle,
 )
 from trustme_xai.inference.prediction_report import (
@@ -20,9 +17,7 @@ from trustme_xai.inference.prediction_report import (
 )
 
 __all__ = [
-    "GlobalStandardizer",
     "ModelBundle",
-    "PerUserStandardizer",
     "TargetModel",
     "build_current_features",
     "build_current_features_from_buckets",
@@ -30,6 +25,5 @@ __all__ = [
     "load_model_bundle",
     "predict_current",
     "run_inference",
-    "save_model_bundle",
     "validate_model_bundle",
 ]

@@ -1,4 +1,4 @@
-"""Store fitted production models and feature normalization"""
+"""Load production models and apply saved feature normalization."""
 
 from __future__ import annotations
 
@@ -17,15 +17,9 @@ MAX_SCORE = 6.0
 
 
 class FeaturePreprocessor(Protocol):
-    """Define the feature normalization interface"""
+    """Define the runtime feature-normalization interface."""
 
     feature_columns: list[str]
-
-    def fit(
-        self,
-        table: pd.DataFrame,
-        row_split: pd.Series,
-    ) -> FeaturePreprocessor: ...
 
     def transform(self, table: pd.DataFrame) -> pd.DataFrame: ...
 
@@ -85,52 +79,13 @@ def numeric_model_features(
     return values
 
 
-def mean_and_std(values: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
-    """Calculate feature means and safe standard deviations
-
-    Args:
-        values: finite numeric features
-
-    Returns:
-        column means and standard deviations
-    """
-    mean = values.mean(axis=0)
-    std = values.std(axis=0, ddof=0).replace(0.0, 1.0)
-    return mean, std
-
-
 @dataclass
 class GlobalStandardizer:
-    """Normalize all participants with saved training statistics"""
+    """Normalize all participants with artifact-provided statistics."""
 
     feature_columns: list[str]
     mean_: pd.Series | None = None
     std_: pd.Series | None = None
-
-    def fit(
-        self,
-        table: pd.DataFrame,
-        row_split: pd.Series,
-    ) -> GlobalStandardizer:
-        """Fit global statistics on training rows
-
-        Args:
-            table: complete feature table
-            row_split: split name for each row
-
-        Returns:
-            fitted GlobalStandardizer
-        """
-        if not table.index.equals(row_split.index):
-            raise ValueError("row_split index must match the feature table")
-        train = numeric_features(
-            table.loc[row_split == "train"],
-            self.feature_columns,
-        )
-        if train.empty:
-            raise ValueError("global standardizer needs training rows")
-        self.mean_, self.std_ = mean_and_std(train)
-        return self
 
     def transform(self, table: pd.DataFrame) -> pd.DataFrame:
         """Normalize one feature table
@@ -142,7 +97,7 @@ class GlobalStandardizer:
             normalized pd.DataFrame
         """
         if self.mean_ is None or self.std_ is None:
-            raise RuntimeError("global standardizer must be fitted")
+            raise RuntimeError("model artifact has no global normalization statistics")
         result = table.copy()
         values = numeric_features(result, self.feature_columns)
         result[self.feature_columns] = (values - self.mean_) / self.std_
@@ -151,45 +106,13 @@ class GlobalStandardizer:
 
 @dataclass
 class PerUserStandardizer:
-    """Normalize each participant with saved training statistics"""
+    """Normalize each participant with artifact-provided statistics."""
 
     feature_columns: list[str]
     user_stats_: dict[str, tuple[pd.Series, pd.Series]] = field(
         default_factory=dict,
     )
     global_stats_: tuple[pd.Series, pd.Series] | None = None
-
-    def fit(
-        self,
-        table: pd.DataFrame,
-        row_split: pd.Series,
-    ) -> PerUserStandardizer:
-        """Fit participant statistics on training rows
-
-        Args:
-            table: complete feature table
-            row_split: split name for each row
-
-        Returns:
-            fitted PerUserStandardizer
-        """
-        if not table.index.equals(row_split.index):
-            raise ValueError("row_split index must match the feature table")
-        if "user_id" not in table.columns:
-            raise ValueError("per-user standardizer needs user_id")
-        train = table.loc[row_split == "train"]
-        if train.empty:
-            raise ValueError("per-user standardizer needs training rows")
-
-        self.user_stats_ = {}
-        self.global_stats_ = mean_and_std(
-            numeric_features(train, self.feature_columns),
-        )
-        for user_id, rows in train.groupby("user_id", sort=False):
-            self.user_stats_[str(user_id)] = mean_and_std(
-                numeric_features(rows, self.feature_columns),
-            )
-        return self
 
     def transform(self, table: pd.DataFrame) -> pd.DataFrame:
         """Normalize one feature table by participant
@@ -201,7 +124,9 @@ class PerUserStandardizer:
             normalized pd.DataFrame
         """
         if not self.user_stats_ or self.global_stats_ is None:
-            raise RuntimeError("per-user standardizer must be fitted")
+            raise RuntimeError(
+                "model artifact has no per-user normalization statistics",
+            )
         if "user_id" not in table.columns:
             raise ValueError("per-user standardizer needs user_id")
         users = table["user_id"]
@@ -221,44 +146,9 @@ class PerUserStandardizer:
         return result
 
 
-def make_preprocessor(
-    normalization: str,
-    feature_columns: list[str],
-) -> FeaturePreprocessor:
-    """Build one feature preprocessor
-
-    Args:
-        normalization: global or per_user
-        feature_columns: model feature columns
-
-    Returns:
-        new feature preprocessor
-    """
-    if normalization == "global":
-        return GlobalStandardizer(list(feature_columns))
-    if normalization == "per_user":
-        return PerUserStandardizer(list(feature_columns))
-    raise ValueError(f"unknown normalization strategy: {normalization}")
-
-
-def clip_predictions(values: object) -> np.ndarray:
-    """Clip finite predictions to the display range
-
-    Args:
-        values: estimator predictions
-
-    Returns:
-        one clipped float array
-    """
-    predictions = np.asarray(values, dtype=float).reshape(-1)
-    if not np.isfinite(predictions).all():
-        raise ValueError("model predictions must be finite")
-    return np.clip(predictions, MIN_SCORE, MAX_SCORE)
-
-
 @dataclass
 class TargetModel:
-    """Store the selected estimator for one positive target"""
+    """Store the loaded estimator for one positive target."""
 
     target: str
     model_name: str
@@ -317,7 +207,7 @@ class TargetModel:
 
 @dataclass
 class ModelBundle:
-    """Store all seven fitted production models"""
+    """Store all seven production estimators loaded from an artifact."""
 
     feature_set: str
     feature_columns: list[str]
@@ -325,6 +215,21 @@ class ModelBundle:
     target_models: dict[str, TargetModel]
     metadata: dict[str, Any] = field(default_factory=dict)
     schema_version: int = MODEL_BUNDLE_SCHEMA_VERSION
+
+    @property
+    def model_version(self) -> str:
+        """Return the validated artifact model version."""
+        return str(self.metadata["model_version"])
+
+    @property
+    def minimum_complete_history_rows(self) -> int:
+        """Return the number of complete prior reports required by inference."""
+        return int(self.metadata.get("minimum_complete_history_rows", 0))
+
+    @property
+    def normalization(self) -> str:
+        """Return the validated runtime normalization description."""
+        return str(self.metadata["normalization"])
 
     def predict(self, table: pd.DataFrame) -> pd.DataFrame:
         """Predict every saved target
@@ -407,10 +312,12 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
         if not model.model_name:
             raise ValueError(f"{target} has no model name")
 
-    if bundle.feature_set in {
-        "compact_90_v1",
-        "production_25_history",
-    }:
+    if bundle.feature_set == "compact_90_v1":
+        from trustme_xai.inference.compact_contract import load_compact_contract
+
+        load_compact_contract().validate_bundle(bundle)
+
+    if bundle.feature_set == "production_25_history":
         from trustme_xai.contracts import MODEL_TARGETS
         from trustme_xai.feature_pipeline.production_features import (
             PRODUCTION_FEATURE_COLUMNS,
@@ -437,55 +344,12 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
             raise ValueError("production targets must use the 0..6 score range")
         for target in bundle.targets:
             model = bundle.target_models[target]
-            if (
-                bundle.feature_set != "compact_90_v1"
-                and not set(model.feature_columns).intersection(
-                    PRODUCTION_FEATURE_COLUMNS,
-                )
+            if not set(model.feature_columns).intersection(
+                PRODUCTION_FEATURE_COLUMNS,
             ):
                 raise ValueError(f"{target} does not use ActivityWatch features")
             if history_column(target, "mean") not in model.feature_columns:
                 raise ValueError(f"{target} does not use its past self-reports")
-
-        if bundle.feature_set == "compact_90_v1":
-            from trustme_xai.modeling.fixed_recipes import (
-                COMPACT_MODEL_VERSION,
-                load_compact_recipes,
-            )
-
-            if model_version != COMPACT_MODEL_VERSION:
-                raise ValueError("compact bundle model version does not match")
-            if bundle.metadata.get("minimum_complete_history_rows") != 1:
-                raise ValueError("compact bundle must require one history row")
-            if bundle.metadata.get("counterfactual_targets") != []:
-                raise ValueError("compact bundle must disable counterfactuals")
-            recipes = load_compact_recipes()
-            for target, recipe in recipes.items():
-                model = bundle.target_models[target]
-                if model.model_name != recipe.model_name:
-                    raise ValueError(f"{target} compact model does not match")
-                if model.prediction_frame != recipe.prediction_frame:
-                    raise ValueError(f"{target} compact frame does not match")
-                if model.feature_columns != list(recipe.feature_columns):
-                    raise ValueError(f"{target} compact features do not match")
-                if model.blend_gamma != recipe.gamma:
-                    raise ValueError(f"{target} compact gamma does not match")
-
-
-def save_model_bundle(bundle: ModelBundle, path: str | Path) -> None:
-    """Save one model bundle
-
-    Args:
-        bundle: fitted model bundle
-        path: output joblib path
-
-    Returns:
-        None
-    """
-    validate_model_bundle(bundle)
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(bundle, output, compress=3)
 
 
 def load_model_bundle(path: str | Path) -> ModelBundle:

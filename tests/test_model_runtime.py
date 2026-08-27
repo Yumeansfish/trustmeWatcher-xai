@@ -13,7 +13,6 @@ from trustme_xai.inference.model_runtime import (
     PerUserStandardizer,
     TargetModel,
     load_model_bundle,
-    save_model_bundle,
 )
 
 
@@ -108,18 +107,6 @@ def test_per_user_standardizer_uses_saved_stats_and_global_fallback() -> None:
         transformed[["x", "y"]].to_numpy(dtype=float),
         [[2.0, 2.0], [1.0, 2.0]],
     )
-
-
-def test_model_bundle_round_trips_through_joblib(tmp_path: Path) -> None:
-    path = tmp_path / "model.joblib"
-    expected = _model_bundle()
-
-    save_model_bundle(expected, path)
-    loaded = load_model_bundle(path)
-
-    assert loaded.feature_set == expected.feature_set
-    assert loaded.targets == expected.targets
-    assert loaded.feature_columns == expected.feature_columns
 
 
 def test_load_model_bundle_accepts_schema_four_without_gamma(tmp_path: Path) -> None:

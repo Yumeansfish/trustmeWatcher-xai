@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import json
 from importlib import resources
-from types import SimpleNamespace
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 
 from trustme_xai.contracts import MODEL_TARGETS
-from trustme_xai.inference.inference_service import _require_model_history
-from trustme_xai.inference.model_runtime import TargetModel
-from trustme_xai.modeling.fixed_recipes import (
-    COMPACT_FEATURE_COUNTS,
-    load_compact_recipes,
+from trustme_xai.inference.compact_contract import (
+    load_compact_contract,
 )
+from trustme_xai.inference.model_runtime import TargetModel
 
 
 class _IdentityPreprocessor:
@@ -34,18 +32,23 @@ class _ConstantEstimator:
         return np.full(len(table), self.value)
 
 
-def test_compact_recipe_manifest_is_locked() -> None:
-    recipes = load_compact_recipes()
+def test_compact_artifact_contract_is_locked() -> None:
+    contract = load_compact_contract()
 
-    assert list(recipes) == MODEL_TARGETS
+    assert contract.model_version == "compact_90_v1"
+    assert contract.feature_set == "compact_90_v1"
+    assert contract.minimum_complete_history_rows == 1
+    assert contract.counterfactual_targets == ()
+    assert contract.normalization == "per_user"
+    assert list(contract.targets) == MODEL_TARGETS
     assert {
         target: (
-            recipe.model_name,
-            recipe.prediction_frame,
-            recipe.gamma,
-            len(recipe.feature_columns),
+            target_contract.model_name,
+            target_contract.prediction_frame,
+            target_contract.gamma,
+            len(target_contract.feature_columns),
         )
-        for target, recipe in recipes.items()
+        for target, target_contract in contract.targets.items()
     } == {
         "mood_valence": ("forest_leaf5", "absolute", 1.0, 33),
         "arousal": ("extra_leaf2", "personal_residual", 1.0, 16),
@@ -56,9 +59,27 @@ def test_compact_recipe_manifest_is_locked() -> None:
         "overall_wellbeing": ("forest_leaf5", "absolute", 0.75, 16),
     }
     assert {
-        target: len(recipe.feature_columns)
-        for target, recipe in recipes.items()
-    } == COMPACT_FEATURE_COUNTS
+        target: len(target_contract.feature_columns)
+        for target, target_contract in contract.targets.items()
+    } == {
+        "mood_valence": 33,
+        "arousal": 16,
+        "restfulness": 18,
+        "stress_management": 17,
+        "productivity": 33,
+        "engagement": 24,
+        "overall_wellbeing": 16,
+    }
+
+
+def test_compact_contract_rejects_changed_runtime_metadata() -> None:
+    artifact = resources.files("trustme_xai").joinpath("current.joblib")
+    with resources.as_file(artifact) as path:
+        bundle = joblib.load(path)
+    bundle.metadata = {**bundle.metadata, "normalization": "global"}
+
+    with pytest.raises(ValueError, match="normalization does not match"):
+        load_compact_contract().validate_bundle(bundle)
 
 
 @pytest.mark.parametrize(
@@ -91,26 +112,6 @@ def test_target_model_applies_saved_gamma(
     )
 
     assert model.predict(table).iloc[0] == pytest.approx(expected)
-
-
-def test_compact_bundle_requires_one_complete_earlier_checkin() -> None:
-    bundle = SimpleNamespace(
-        targets=MODEL_TARGETS,
-        metadata={
-            "model_version": "compact_90_v1",
-            "minimum_complete_history_rows": 1,
-        },
-    )
-    as_of = pd.Timestamp("2026-01-02 12:00:00")
-
-    with pytest.raises(ValueError, match="one complete earlier StreamDeck check-in"):
-        _require_model_history(bundle, [], as_of)
-
-    report = {
-        "timestamp": "2026-01-01 12:00:00",
-        **{target: 3.0 for target in MODEL_TARGETS},
-    }
-    _require_model_history(bundle, [report], as_of)
 
 
 def test_behavior_model_records_train_only_provenance() -> None:

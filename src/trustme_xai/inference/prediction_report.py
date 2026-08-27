@@ -22,7 +22,7 @@ def build_prediction_report(
     """Build one report with seven positive target predictions
 
     Args:
-        bundle: fitted production model bundle
+        bundle: loaded production model bundle
         current_features: one current feature row
         participant_id: participant linked to the row
         as_of: end of the prediction window
@@ -62,7 +62,7 @@ def build_prediction_report(
         "participant_id": participant_id,
         "prediction_timestamp": pd.Timestamp(as_of).isoformat(),
         "window_minutes": 60,
-        "model_version": bundle.metadata["model_version"],
-        "normalization": bundle.metadata["normalization"],
+        "model_version": bundle.model_version,
+        "normalization": bundle.normalization,
         "predictions": predictions,
     }
