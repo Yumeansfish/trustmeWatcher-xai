@@ -3,6 +3,13 @@
 from trustme_xai.feature_pipeline.runtime_features import (
     build_runtime_feature_row,
 )
+from trustme_xai.inference.action_classifier import (
+    ActionClassifierRuntime,
+    CounterfactualSuggestion,
+    PreparedClassifierSnapshot,
+    load_action_classifier_runtime,
+    load_packaged_action_classifier,
+)
 from trustme_xai.inference.inference_service import predict_current, run_inference
 from trustme_xai.inference.model_runtime import (
     ModelBundle,
@@ -15,10 +22,15 @@ from trustme_xai.inference.prediction_report import (
 )
 
 __all__ = [
+    "ActionClassifierRuntime",
+    "CounterfactualSuggestion",
     "ModelBundle",
+    "PreparedClassifierSnapshot",
     "TargetModel",
     "build_prediction_report",
     "build_runtime_feature_row",
+    "load_action_classifier_runtime",
+    "load_packaged_action_classifier",
     "load_model_bundle",
     "predict_current",
     "run_inference",

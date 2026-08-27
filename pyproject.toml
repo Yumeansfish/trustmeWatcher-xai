@@ -25,6 +25,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 trustme_xai = [
+    "action_classifier.joblib",
     "current.joblib",
     "feature_pipeline/*.json",
     "inference/*.json",
