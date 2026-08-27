@@ -10,6 +10,7 @@ from trustme_xai.feature_pipeline.history_features import (
 )
 from trustme_xai.feature_pipeline.production_features import (
     PRODUCTION_FEATURE_COLUMNS,
+    RUNTIME_ACTIVITY_FEATURE_COLUMNS,
     build_production_features,
 )
 from trustme_xai.feature_pipeline.window_features import build_window_features
@@ -189,7 +190,7 @@ def test_production_25_feature_contract_and_golden_values() -> None:
     assert list(features.columns) == [
         "user_id",
         "timestamp",
-        *EXPECTED_PRODUCTION_25,
+        *RUNTIME_ACTIVITY_FEATURE_COLUMNS,
     ]
     assert current[EXPECTED_PRODUCTION_25].to_numpy(dtype=float) == pytest.approx(
         [

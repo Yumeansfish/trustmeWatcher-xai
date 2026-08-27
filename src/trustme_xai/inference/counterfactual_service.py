@@ -1,4 +1,4 @@
-"""Build counterfactual reports from ActivityWatch buckets"""
+"""Keep compatibility with the parent desired-score counterfactual contract."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from typing import Any
 
 import pandas as pd
 
-from trustme_xai.inference.counterfactual_engine import find_counterfactual
-from trustme_xai.inference.inference_service import (
-    build_current_features_from_buckets,
+from trustme_xai.feature_pipeline.runtime_features import (
+    build_runtime_feature_row,
 )
+from trustme_xai.inference.counterfactual_engine import find_counterfactual
 from trustme_xai.inference.model_runtime import ModelBundle
 
 
@@ -25,10 +25,10 @@ def run_counterfactual(
     previous_questionnaire_times: Sequence[object] = (),
     past_self_reports: Sequence[Mapping[str, object]] = (),
 ) -> dict[str, Any]:
-    """Build one zero-sum counterfactual report
+    """Build one legacy desired-score counterfactual report.
 
     Args:
-        bundle: fitted production model bundle
+        bundle: loaded production model bundle
         activitywatch_buckets: raw ActivityWatch buckets
         user_id: participant identifier
         as_of: prediction timestamp
@@ -43,17 +43,13 @@ def run_counterfactual(
     if not user_id.strip():
         raise ValueError("user_id must not be blank")
 
-    ts = pd.Timestamp(as_of)
-    if pd.isna(ts):
-        raise ValueError("as_of must be a valid timestamp")
-
-    feature_row = build_current_features_from_buckets(
+    feature_row = build_runtime_feature_row(
+        model=bundle,
         activitywatch_buckets=activitywatch_buckets,
         user_id=user_id,
-        as_of=ts,
+        as_of=as_of,
         previous_questionnaire_times=previous_questionnaire_times,
         past_self_reports=past_self_reports,
-        include_actionable_categories=True,
     )
 
     return find_counterfactual(

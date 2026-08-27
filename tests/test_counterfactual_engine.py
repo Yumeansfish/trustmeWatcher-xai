@@ -82,10 +82,9 @@ def test_run_counterfactual_builds_features_from_buckets(
 ) -> None:
     monkeypatch.setattr(
         service_module,
-        "build_current_features_from_buckets",
-        lambda activitywatch_buckets, user_id, as_of,
-        previous_questionnaire_times, past_self_reports,
-        include_actionable_categories: _feature_row(),
+        "build_runtime_feature_row",
+        lambda model, activitywatch_buckets, user_id, as_of,
+        previous_questionnaire_times, past_self_reports: _feature_row(),
     )
 
     result = run_counterfactual(

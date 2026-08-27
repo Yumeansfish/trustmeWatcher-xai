@@ -7,6 +7,7 @@ from typing import NamedTuple, cast
 import pandas as pd
 
 from trustme_xai.contracts import ParsedActivityWatchEvents
+from trustme_xai.feature_pipeline.activity_categories import LEGACY_CATEGORIES
 
 
 class Allocation(NamedTuple):
@@ -369,22 +370,10 @@ def build_window_features(
             "window_minutes": window_minutes,
             "app_switch_count": switches,
             "total_active_minutes": allocation.total_minutes,
-            "time_personal_distraction": allocation.category_minutes.get(
-                "personal_distraction",
-                0.0,
-            ),
-            "time_media": allocation.category_minutes.get("media", 0.0),
-            "time_communication": allocation.category_minutes.get(
-                "communication",
-                0.0,
-            ),
-            "time_other": allocation.category_minutes.get("other", 0.0),
-            "time_development": allocation.category_minutes.get(
-                "development",
-                0.0,
-            ),
-            "time_writing": allocation.category_minutes.get("writing", 0.0),
-            "time_research": allocation.category_minutes.get("research", 0.0),
+            **{
+                f"time_{category}": allocation.category_minutes.get(category, 0.0)
+                for category in LEGACY_CATEGORIES
+            },
             "ratio_communication": divide_or_zero(
                 allocation.category_minutes.get("communication", 0.0),
                 allocation.total_minutes,
