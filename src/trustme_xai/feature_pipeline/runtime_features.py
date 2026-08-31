@@ -6,7 +6,6 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Protocol
 
-import numpy as np
 import pandas as pd
 
 from trustme_xai.contracts import MODEL_TARGETS, ParsedActivityWatchEvents
@@ -39,7 +38,6 @@ RUNTIME_FEATURE_COLUMNS = [
 class _RuntimeFeatureModel(Protocol):
     targets: list[str]
     model_version: str
-    minimum_complete_history_rows: int
 
 
 def _has_current_activity(
@@ -107,43 +105,6 @@ def _history_features(
     return current[["user_id", "timestamp", *all_history_columns()]]
 
 
-def _complete_history_rows(
-    model: _RuntimeFeatureModel,
-    past_self_reports: Sequence[Mapping[str, object]],
-    as_of: pd.Timestamp,
-) -> int:
-    complete = 0
-    for report in past_self_reports:
-        if "timestamp" not in report:
-            continue
-        try:
-            timestamp = normalize_timestamp(report["timestamp"])
-            values = np.asarray(
-                [report.get(target) for target in model.targets],
-                dtype=float,
-            )
-        except (TypeError, ValueError):
-            continue
-        if timestamp < as_of and np.isfinite(values).all():
-            complete += 1
-    return complete
-
-
-def _require_model_history(
-    model: _RuntimeFeatureModel,
-    past_self_reports: Sequence[Mapping[str, object]],
-    as_of: pd.Timestamp,
-) -> None:
-    required = model.minimum_complete_history_rows
-    if required <= 0:
-        return
-    if _complete_history_rows(model, past_self_reports, as_of) < required:
-        raise ValueError(
-            f"{model.model_version} needs one complete "
-            "earlier StreamDeck check-in",
-        )
-
-
 def _validate_bucket_sources(
     activitywatch_buckets: Mapping[str, Mapping[str, object]],
 ) -> None:
@@ -179,7 +140,6 @@ def build_runtime_feature_row(
     if not normalized_user_id:
         raise ValueError("user_id must not be blank")
     current_time = normalize_timestamp(as_of)
-    _require_model_history(model, past_self_reports, current_time)
     _validate_bucket_sources(activitywatch_buckets)
 
     parsed = parse_activitywatch_events(

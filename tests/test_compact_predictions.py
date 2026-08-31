@@ -14,7 +14,8 @@ from trustme_xai.contracts import MODEL_TARGETS
 from trustme_xai.inference.compact_contract import (
     load_compact_contract,
 )
-from trustme_xai.inference.model_runtime import TargetModel
+from trustme_xai.inference.inference_service import run_inference
+from trustme_xai.inference.model_runtime import TargetModel, load_model_bundle
 
 
 class _IdentityPreprocessor:
@@ -127,3 +128,37 @@ def test_behavior_model_records_train_only_provenance() -> None:
     assert provenance["random_state"] == 42
     assert provenance["validation_or_test_activity_used"] is False
     assert provenance["state_feature_parity_max_abs_diff"] < 1e-12
+
+
+def test_compact_model_predicts_without_self_report_history() -> None:
+    artifact = resources.files("trustme_xai").joinpath("current.joblib")
+    with resources.as_file(artifact) as path:
+        bundle = load_model_bundle(path)
+    buckets = {
+        "window": {
+            "type": "currentwindow",
+            "hostname": "test-host",
+            "events": [
+                {
+                    "timestamp": "2026-07-30T09:30:00+02:00",
+                    "duration": 30 * 60.0,
+                    "data": {"app": "Code", "title": "main.py"},
+                }
+            ],
+        }
+    }
+
+    report = run_inference(
+        bundle=bundle,
+        activitywatch_buckets=buckets,
+        user_id="new_user",
+        as_of="2026-07-30T10:00:00+02:00",
+    )
+
+    assert [
+        prediction["target"] for prediction in report["predictions"]
+    ] == MODEL_TARGETS
+    assert all(
+        0.0 <= prediction["prediction"] <= 6.0
+        for prediction in report["predictions"]
+    )

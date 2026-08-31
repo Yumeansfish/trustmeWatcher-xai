@@ -265,6 +265,22 @@ def test_deployed_action_classifier_supports_all_targets_end_to_end() -> None:
             assert suggestion.delta_probability_high >= 0.25
 
 
+def test_deployed_action_classifier_supports_missing_self_report_history() -> None:
+    runtime = load_packaged_action_classifier()
+
+    snapshot = runtime.prepare_snapshot(
+        activitywatch_buckets=_personal_distraction_buckets(),
+        user_id="new_user",
+        as_of="2026-07-30T10:00:00+02:00",
+    )
+
+    assert [prediction.target for prediction in snapshot.predictions] == MODEL_TARGETS
+    assert all(
+        0.0 <= prediction.probability_high <= 1.0
+        for prediction in snapshot.predictions
+    )
+
+
 def test_public_interface_hides_classifier_artifact_representation() -> None:
     runtime = inference_interface.load_packaged_action_classifier()
     history = {

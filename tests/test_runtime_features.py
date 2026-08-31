@@ -105,17 +105,15 @@ def test_runtime_feature_interface_has_no_shape_flags() -> None:
     assert "include_action_classifier_features" not in parameters
 
 
-def test_runtime_feature_row_enforces_model_history_requirement() -> None:
-    with pytest.raises(
-        ValueError,
-        match="needs one complete earlier StreamDeck check-in",
-    ):
-        build_runtime_feature_row(
-            model=_model(minimum_history_rows=1),
-            activitywatch_buckets=_buckets(),
-            user_id="user_e2e",
-            as_of="2026-07-30T10:00:00+02:00",
-        )
+def test_runtime_feature_row_supports_missing_self_report_history() -> None:
+    without_history = build_runtime_feature_row(
+        model=_model(minimum_history_rows=1),
+        activitywatch_buckets=_buckets(),
+        user_id="user_e2e",
+        as_of="2026-07-30T10:00:00+02:00",
+    )
+
+    assert pd.isna(without_history.loc[0, "history__productivity__last"])
 
     row = build_runtime_feature_row(
         model=_model(minimum_history_rows=1),
