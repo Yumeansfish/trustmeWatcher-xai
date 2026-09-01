@@ -139,6 +139,6 @@ def test_deployed_compact_bundle_returns_seven_predictions() -> None:
     )
 
     predictions = report["predictions"]
-    assert report["model_version"] == "compact_90_v1"
+    assert report["model_version"] == "compact_aw_v2"
     assert [item["target"] for item in predictions] == MODEL_TARGETS
     assert all(0.0 <= item["prediction"] <= 6.0 for item in predictions)

@@ -20,9 +20,9 @@ from trustme_xai.feature_pipeline.self_report_features import (
     history_column,
 )
 
-COMPACT_MODEL_VERSION = "compact_90_v1"
+COMPACT_MODEL_VERSION = "compact_aw_v2"
 COMPACT_CONTRACT_SCHEMA = "trustme_xai.compact_artifact.v1"
-COMPACT_CONTRACT_RESOURCE = "compact_90_v1.json"
+COMPACT_CONTRACT_RESOURCE = "compact_aw_v2.json"
 
 
 @dataclass(frozen=True)

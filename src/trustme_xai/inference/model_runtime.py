@@ -312,7 +312,7 @@ def validate_model_bundle(bundle: ModelBundle) -> None:
         if not model.model_name:
             raise ValueError(f"{target} has no model name")
 
-    if bundle.feature_set == "compact_90_v1":
+    if bundle.feature_set == "compact_aw_v2":
         from trustme_xai.inference.compact_contract import load_compact_contract
 
         load_compact_contract().validate_bundle(bundle)

@@ -1,13 +1,13 @@
 {
   "schema": "trustme_xai.compact_artifact.v1",
-  "model_version": "compact_90_v1",
-  "feature_set": "compact_90_v1",
+  "model_version": "compact_aw_v2",
+  "feature_set": "compact_aw_v2",
   "normalization": "per_user",
   "minimum_complete_history_rows": 1,
   "counterfactual_targets": [],
   "preprocessor_fit_scope": "train_plus_validation",
   "score_range": [0.0, 6.0],
-  "selection": "90_percent_cumulative_absolute_validation_shap",
+  "selection": "validation_mse_with_required_activitywatch",
   "targets": {
     "mood_valence": {
       "model": "forest_leaf5",
@@ -69,7 +69,9 @@
         "history__restfulness__last",
         "history__restfulness__mean",
         "history__restfulness__last_minus_mean",
-        "history__productivity__mean"
+        "history__productivity__mean",
+        "current60_state_share_4",
+        "context_24h_ratio_personal_distraction"
       ]
     },
     "restfulness": {
@@ -94,11 +96,13 @@
         "history__engagement__mean",
         "history__engagement__last_minus_mean",
         "history__overall_wellbeing__mean",
-        "history__overall_wellbeing__last_minus_mean"
+        "history__overall_wellbeing__last_minus_mean",
+        "current60_state_share_4",
+        "prior7d_state_share_5"
       ]
     },
     "stress_management": {
-      "model": "extra_leaf5",
+      "model": "hist_leaf20",
       "prediction_frame": "absolute",
       "gamma": 1.0,
       "features": [
@@ -116,9 +120,10 @@
         "history__restfulness__last_minus_mean",
         "history__productivity__mean",
         "history__engagement__mean",
-        "history__engagement__last_minus_mean",
         "history__overall_wellbeing__last",
-        "history__overall_wellbeing__mean"
+        "history__overall_wellbeing__mean",
+        "current60_state_share_4",
+        "prior24h_state_share_0"
       ]
     },
     "productivity": {

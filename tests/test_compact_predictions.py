@@ -36,8 +36,8 @@ class _ConstantEstimator:
 def test_compact_artifact_contract_is_locked() -> None:
     contract = load_compact_contract()
 
-    assert contract.model_version == "compact_90_v1"
-    assert contract.feature_set == "compact_90_v1"
+    assert contract.model_version == "compact_aw_v2"
+    assert contract.feature_set == "compact_aw_v2"
     assert contract.minimum_complete_history_rows == 1
     assert contract.counterfactual_targets == ()
     assert contract.normalization == "per_user"
@@ -52,9 +52,9 @@ def test_compact_artifact_contract_is_locked() -> None:
         for target, target_contract in contract.targets.items()
     } == {
         "mood_valence": ("forest_leaf5", "absolute", 1.0, 33),
-        "arousal": ("extra_leaf2", "personal_residual", 1.0, 16),
-        "restfulness": ("hist_leaf10", "absolute", 1.0, 18),
-        "stress_management": ("extra_leaf5", "absolute", 1.0, 17),
+        "arousal": ("extra_leaf2", "personal_residual", 1.0, 18),
+        "restfulness": ("hist_leaf10", "absolute", 1.0, 20),
+        "stress_management": ("hist_leaf20", "absolute", 1.0, 18),
         "productivity": ("extra_leaf2", "personal_residual", 0.75, 33),
         "engagement": ("hist_leaf10", "absolute", 0.75, 24),
         "overall_wellbeing": ("forest_leaf5", "absolute", 0.75, 16),
@@ -64,9 +64,9 @@ def test_compact_artifact_contract_is_locked() -> None:
         for target, target_contract in contract.targets.items()
     } == {
         "mood_valence": 33,
-        "arousal": 16,
-        "restfulness": 18,
-        "stress_management": 17,
+        "arousal": 18,
+        "restfulness": 20,
+        "stress_management": 18,
         "productivity": 33,
         "engagement": 24,
         "overall_wellbeing": 16,
