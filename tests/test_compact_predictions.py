@@ -104,6 +104,22 @@ def test_every_compact_target_uses_event_derived_activitywatch_features() -> Non
     }
 
 
+def test_aw_target_artifact_metrics_beat_the_previous_bundle() -> None:
+    artifact = resources.files("trustme_xai").joinpath("current.joblib")
+    with resources.as_file(artifact) as path:
+        bundle = load_model_bundle(path)
+    previous = {
+        "arousal": (0.8910882037142006, 0.5638086506946122),
+        "restfulness": (0.8556202257450447, 0.7706652760864541),
+        "stress_management": (0.6939748226293037, 0.9724502977806789),
+    }
+
+    for target, (validation_mse, test_mse) in previous.items():
+        metrics = bundle.target_models[target].metrics
+        assert metrics["validation_mse"] < validation_mse
+        assert metrics["test_mse"] < test_mse
+
+
 def test_compact_contract_rejects_changed_runtime_metadata() -> None:
     artifact = resources.files("trustme_xai").joinpath("current.joblib")
     with resources.as_file(artifact) as path:
