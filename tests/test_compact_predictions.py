@@ -11,6 +11,9 @@ import pandas as pd
 import pytest
 
 from trustme_xai.contracts import MODEL_TARGETS
+from trustme_xai.feature_pipeline.production_features import (
+    EVENT_DERIVED_ACTIVITY_FEATURE_COLUMNS,
+)
 from trustme_xai.inference.compact_contract import (
     load_compact_contract,
 )
@@ -70,6 +73,34 @@ def test_compact_artifact_contract_is_locked() -> None:
         "productivity": 33,
         "engagement": 24,
         "overall_wellbeing": 16,
+    }
+
+
+def test_every_compact_target_uses_event_derived_activitywatch_features() -> None:
+    contract = load_compact_contract()
+    activity_features = set(EVENT_DERIVED_ACTIVITY_FEATURE_COLUMNS)
+    selected_activity = {
+        target: set(target_contract.feature_columns).intersection(activity_features)
+        for target, target_contract in contract.targets.items()
+    }
+
+    assert all(selected_activity.values())
+    assert {
+        target: selected_activity[target]
+        for target in ("arousal", "restfulness", "stress_management")
+    } == {
+        "arousal": {
+            "context_24h_ratio_personal_distraction",
+            "current60_state_share_4",
+        },
+        "restfulness": {
+            "current60_state_share_4",
+            "prior7d_state_share_5",
+        },
+        "stress_management": {
+            "current60_state_share_4",
+            "prior24h_state_share_0",
+        },
     }
 
 

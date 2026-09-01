@@ -13,6 +13,7 @@ import numpy as np
 
 from trustme_xai.contracts import MODEL_TARGETS
 from trustme_xai.feature_pipeline.production_features import (
+    EVENT_DERIVED_ACTIVITY_FEATURE_COLUMNS,
     PRODUCTION_FEATURE_COLUMNS,
 )
 from trustme_xai.feature_pipeline.self_report_features import (
@@ -118,6 +119,10 @@ def _target_contract(target: str, payload: Any) -> CompactTargetContract:
         raise ValueError(f"{target} compact features are unknown: {unknown}")
     if history_column(target, "mean") not in features:
         raise ValueError(f"{target} compact contract needs its history mean")
+    if not set(features).intersection(EVENT_DERIVED_ACTIVITY_FEATURE_COLUMNS):
+        raise ValueError(
+            f"{target} compact contract needs an event-derived ActivityWatch feature"
+        )
     return contract
 
 

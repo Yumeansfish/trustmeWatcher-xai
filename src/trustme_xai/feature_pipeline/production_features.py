@@ -61,6 +61,13 @@ PRODUCTION_FEATURE_COLUMNS = [
     "context_7d_ratio_research",
 ]
 
+# This feature comes from questionnaire request times rather than AW events.
+EVENT_DERIVED_ACTIVITY_FEATURE_COLUMNS = [
+    column
+    for column in PRODUCTION_FEATURE_COLUMNS
+    if column != "minutes_since_prev1_window"
+]
+
 RUNTIME_ACTIVITY_FEATURE_COLUMNS = [
     *PRODUCTION_FEATURE_COLUMNS,
     *[
